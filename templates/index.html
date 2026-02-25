@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hukuk Bürosu Rota Planlayıcı</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <h2 class="mb-4 text-center">⚖️ Şehir Dışı Rota Planlayıcı</h2>
+    
+    <div class="text-center mb-4">
+        <form action="/planla" method="POST">
+            <button type="submit" class="btn btn-primary btn-lg">📍 Haftalık Rotayı Oluştur</button>
+        </form>
+        <p class="text-muted mt-2"><small>Veriler PocketBase üzerinden anlık çekilmektedir.</small></p>
+    </div>
+
+    {% if route != None %}
+        {% if route|length == 0 %}
+            <div class="alert alert-warning text-center">Şu an için gidilecek açık dosya veya PocketBase bağlantısı bulunamadı.</div>
+        {% else %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">🚗 Optimizasyon Sonucu (09:00 - 17:00 Kısıtlı)</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Adım</th>
+                                <th>Şehir / Adliye</th>
+                                <th>Mesafe (km)</th>
+                                <th>Tahmini Varış</th>
+                                <th>Çıkış (Mesai İçi)</th>
+                                <th>İlgili Dosyalar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for step in route %}
+                            <tr>
+                                <td><strong>{{ step.step }}</strong></td>
+                                <td>{{ step.city }} <br> <small class="text-muted">{{ step.courthouse }}</small></td>
+                                <td>{{ step.distance }}</td>
+                                <td><span class="badge bg-success">{{ step.arrival }}</span></td>
+                                <td><span class="badge bg-warning text-dark">{{ step.departure }}</span></td>
+                                <td>{{ step.cases }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+</body>
+</html>

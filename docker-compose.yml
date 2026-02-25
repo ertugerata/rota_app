@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # 1. Veritabanı Servisi (PocketBase)
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: rota_pocketbase
+    ports:
+      - "8090:8090"
+    volumes:
+      - pb_data:/pb_data
+    env_file:
+      - .env
+    # Mevcut entrypoint'i ezip kendi bash komutumuzu yazıyoruz
+    entrypoint: ["/bin/sh", "-c"]
+    # Önce admin hesabını oluşturmayı dener (varsa hata vermez '|| true' sayesinde), sonra sunucuyu başlatır
+    command: 
+      - |
+        /usr/local/bin/pocketbase admin create $${PB_ADMIN_EMAIL} $${PB_ADMIN_PASSWORD} || true
+        /usr/local/bin/pocketbase serve --dir /pb_data --http 0.0.0.0:8090
+    restart: unless-stopped
+
+  # 2. Web Uygulaması Servisi (Flask)
+  web:
+    build: .
+    container_name: rota_flask_app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - pocketbase
+    environment:
+      - POCKETBASE_URL=http://pocketbase:8090
+    restart: unless-stopped
+
+volumes:
+  pb_data:
