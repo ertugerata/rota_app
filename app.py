@@ -1,15 +1,59 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask_sqlalchemy import SQLAlchemy
 import requests
 from datetime import datetime, timedelta
-import urllib.parse
 import os
 import json
-import init_db
+import time
+from sqlalchemy import or_
 
 app = Flask(__name__)
 
-# Docker ortamında "http://pocketbase:8090" olarak çalışır, lokalde ise "http://127.0.0.1:8090"
-POCKETBASE_URL = os.environ.get("POCKETBASE_URL", "http://127.0.0.1:8090")
+# PostgreSQL Konfigürasyonu
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "postgresql://admin:AvukatRota2026!@localhost:5432/hukukburosu")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# --- Veritabanı Modelleri ---
+class Case(db.Model):
+    __tablename__ = 'cases'
+    id = db.Column(db.Integer, primary_key=True)
+    case_no = db.Column(db.String(50), nullable=False)
+    client = db.Column(db.String(100))
+    opponent = db.Column(db.String(100))
+    city = db.Column(db.String(50), nullable=False)
+    district = db.Column(db.String(50))
+    court_office = db.Column(db.String(100))
+    case_type = db.Column(db.String(50))
+    status = db.Column(db.String(50))
+    priority = db.Column(db.String(50))
+    follower_lawyer = db.Column(db.String(100))
+    authorized_lawyer = db.Column(db.String(100))
+    due_date = db.Column(db.Date, nullable=True)
+    description = db.Column(db.Text)
+    lat = db.Column(db.Float, nullable=True)
+    lon = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'case_no': self.case_no,
+            'client': self.client,
+            'opponent': self.opponent,
+            'city': self.city,
+            'district': self.district,
+            'court_office': self.court_office,
+            'case_type': self.case_type,
+            'status': self.status,
+            'priority': self.priority,
+            'follower_lawyer': self.follower_lawyer,
+            'authorized_lawyer': self.authorized_lawyer,
+            'due_date': self.due_date.strftime('%Y-%m-%d') if self.due_date else None,
+            'lat': self.lat,
+            'lon': self.lon
+        }
 
 # --- OSRM API Karayolu Hesaplama ---
 def get_osrm_route(lat1, lon1, lat2, lon2):
@@ -23,57 +67,6 @@ def get_osrm_route(lat1, lon1, lat2, lon2):
     except Exception as e:
         print(f"OSRM Hatası: {e}")
     return float('inf'), float('inf')
-
-# --- PocketBase Yardımcı Fonksiyonları ---
-def get_cases(filter_query=""):
-    url = f"{POCKETBASE_URL}/api/collections/cases/records"
-    params = {'sort': '-created'}
-    if filter_query:
-        params['filter'] = filter_query
-
-    try:
-        response = requests.get(url, params=params, timeout=5).json()
-        return response.get('items', [])
-    except Exception as e:
-        print(f"PocketBase Hatası: {e}")
-        return []
-
-def get_case(case_id):
-    url = f"{POCKETBASE_URL}/api/collections/cases/records/{case_id}"
-    try:
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            return response.json()
-    except Exception as e:
-        print(f"PocketBase Hatası: {e}")
-    return None
-
-def create_case(data):
-    url = f"{POCKETBASE_URL}/api/collections/cases/records"
-    try:
-        response = requests.post(url, json=data, timeout=5)
-        return response.status_code == 200
-    except Exception as e:
-        print(f"PocketBase Hatası: {e}")
-        return False
-
-def update_case(case_id, data):
-    url = f"{POCKETBASE_URL}/api/collections/cases/records/{case_id}"
-    try:
-        response = requests.patch(url, json=data, timeout=5)
-        return response.status_code == 200
-    except Exception as e:
-        print(f"PocketBase Hatası: {e}")
-        return False
-
-def delete_case(case_id):
-    url = f"{POCKETBASE_URL}/api/collections/cases/records/{case_id}"
-    try:
-        response = requests.delete(url, timeout=5)
-        return response.status_code == 204
-    except Exception as e:
-        print(f"PocketBase Hatası: {e}")
-        return False
 
 # --- Şehir Koordinatları (Basit Harita Verisi) ---
 CITY_COORDS = {
@@ -96,17 +89,13 @@ CITY_COORDS = {
     'Şanlıurfa': {'lat': 37.1591, 'lon': 38.7969},
     'Trabzon': {'lat': 41.0027, 'lon': 39.7168},
     'Van': {'lat': 38.4891, 'lon': 43.4089},
-    # Diğer şehirler eklenebilir veya geocoding servisi kullanılabilir
 }
 
 # --- Rota Optimizasyon Algoritması ---
 def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
     # 1. Seçilen dosyaları çek
-    cases = []
-    for case_id in selected_case_ids:
-        case = get_case(case_id)
-        if case:
-            cases.append(case)
+    # selected_case_ids are string IDs from checkbox values
+    cases = Case.query.filter(Case.id.in_(selected_case_ids)).all()
 
     if not cases:
         return []
@@ -115,18 +104,17 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
     grouped_destinations = {}
     
     for case in cases:
-        city = case.get('city', '')
-        # Şehir koordinatlarını bul, yoksa varsayılan (0,0) - gerçek uygulamada geocoding lazım
+        city = case.city
+        # Şehir koordinatlarını bul
         coords = CITY_COORDS.get(city, {'lat': 0, 'lon': 0})
-        # Eğer kayıtta lat/lon varsa onu kullan
-        if case.get('lat') and case.get('lon'):
-             coords = {'lat': case.get('lat'), 'lon': case.get('lon')}
-        
-        city_key = city # Basitlik için şehir bazlı gruplama
+        if case.lat and case.lon:
+             coords = {'lat': case.lat, 'lon': case.lon}
 
+        city_key = city
+        
         if city_key not in grouped_destinations:
             grouped_destinations[city_key] = {
-                'name': city, # Adliye yerine şehir ismi kullanıyoruz şimdilik
+                'name': city,
                 'city': city,
                 'lat': coords['lat'],
                 'lon': coords['lon'],
@@ -134,7 +122,7 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
                 'case_count': 0
             }
         
-        grouped_destinations[city_key]['cases'].append(f"{case.get('case_no')} ({case.get('client')})")
+        grouped_destinations[city_key]['cases'].append(f"{case.case_no} ({case.client})")
         grouped_destinations[city_key]['case_count'] += 1
 
     # Liste haline getir
@@ -146,10 +134,9 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
     # 3. Başlangıç Ayarları
     start_coords = CITY_COORDS.get(start_city, CITY_COORDS.get('Bursa'))
     current_location = {'name': f'{start_city} Ofis', 'lat': start_coords['lat'], 'lon': start_coords['lon']}
-    
+
     if start_date_str:
         try:
-            # "2026-W09" formatından (Screenshot'taki hafta seçimi gibi) veya normal tarih
             if 'W' in start_date_str:
                  current_time = datetime.strptime(start_date_str + '-1', "%Y-W%W-%w")
             else:
@@ -160,8 +147,7 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
         current_time = datetime.now()
 
     current_time = current_time.replace(hour=9, minute=0, second=0, microsecond=0)
-
-    # Hafta sonu kontrolü
+    
     if current_time.weekday() >= 5: 
         current_time += timedelta(days=(7 - current_time.weekday()))
 
@@ -175,9 +161,8 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
         shortest_dur = float('inf')
         
         for dest in unvisited:
-            # Eğer koordinat yoksa (0,0), rastgele bir mesafe ver veya hata yönet
             if dest['lat'] == 0 and dest['lon'] == 0:
-                 dist, dur = 100, 60 # Dummy values
+                 dist, dur = 100, 60
             else:
                 dist, dur = get_osrm_route(current_location['lat'], current_location['lon'], dest['lat'], dest['lon'])
 
@@ -190,10 +175,8 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
         if not best_stop:
             break
 
-        # Varış, İşlem, Çıkış hesapları
         arrival_time = current_time + timedelta(minutes=best_stop['travel_dur'])
         
-        # Mesai kontrolü (09-17)
         if arrival_time.hour >= 17 or arrival_time.hour < 9:
             arrival_time = arrival_time.replace(hour=9, minute=0) + timedelta(days=1)
             if arrival_time.weekday() >= 5:
@@ -228,79 +211,113 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
 
 @app.route('/')
 def index():
-    # Dashboard sayfası
     filter_q = request.args.get('search', '')
 
-    # İstatistikler için tüm verileri çek (filtresiz)
-    all_cases = get_cases()
-
-    total_files = len(all_cases)
-    cities = set(c.get('city') for c in all_cases if c.get('city'))
-    active_files = sum(1 for c in all_cases if c.get('status') == 'Aktif')
-    urgent_files = sum(1 for c in all_cases if c.get('priority') == 'Acil')
-    hearings = sum(1 for c in all_cases if c.get('status') == 'Duruşma Bekliyor') # Basit varsayım
-
-    # Tablo verisi (varsa arama filtresi ile)
-    pb_filter = ""
     if filter_q:
-        # PocketBase filter syntax: (field ~ 'value')
-        pb_filter = f"(case_no~'{filter_q}' || client~'{filter_q}' || city~'{filter_q}')"
+        cases = Case.query.filter(
+            or_(
+                Case.case_no.ilike(f'%{filter_q}%'),
+                Case.client.ilike(f'%{filter_q}%'),
+                Case.city.ilike(f'%{filter_q}%')
+            )
+        ).order_by(Case.created_at.desc()).all()
+    else:
+        cases = Case.query.order_by(Case.created_at.desc()).all()
 
-    table_cases = get_cases(pb_filter) if filter_q else all_cases
+    # Stats
+    total_files = Case.query.count()
+    cities_count = db.session.query(Case.city).distinct().count()
+    urgent_files = Case.query.filter_by(priority='Acil').count()
+    hearings = Case.query.filter_by(status='Duruşma Bekliyor').count()
 
     return render_template('dashboard.html',
-                           cases=table_cases,
+                           cases=cases,
                            stats={
                                'total': total_files,
-                               'cities': len(cities),
+                               'cities': cities_count,
                                'urgent': urgent_files,
                                'hearings': hearings
                            })
 
 @app.route('/rota')
 def rota_page():
-    # Rota Planlama sayfası
-    cases = get_cases("(status='Aktif' || status='Duruşma Bekliyor')")
+    # Sadece Aktif veya Duruşma Bekleyen dosyalar
+    cases = Case.query.filter(
+        or_(Case.status == 'Aktif', Case.status == 'Duruşma Bekliyor')
+    ).order_by(Case.created_at.desc()).all()
+
     return render_template('route.html', cases=cases)
 
 @app.route('/api/cases', methods=['POST'])
 def api_create_case():
-    data = request.form.to_dict()
-    # Checkbox handling if needed, or select inputs
-    success = create_case(data)
-    if success:
-        return redirect(url_for('index'))
-    return "Hata oluştu", 500
+    try:
+        data = request.form.to_dict()
+        new_case = Case(
+            case_no=data.get('case_no'),
+            client=data.get('client'),
+            opponent=data.get('opponent'),
+            city=data.get('city'),
+            district=data.get('district'),
+            court_office=data.get('court_office'),
+            case_type=data.get('case_type'),
+            status=data.get('status'),
+            priority=data.get('priority'),
+            follower_lawyer=data.get('follower_lawyer'),
+            authorized_lawyer=data.get('authorized_lawyer'),
+            description=data.get('description'),
+            due_date=datetime.strptime(data.get('due_date'), '%Y-%m-%d') if data.get('due_date') else None
+        )
 
-@app.route('/api/cases/delete/<case_id>', methods=['POST'])
+        # Koordinatları şehirden otomatik al (basit çözüm)
+        coords = CITY_COORDS.get(data.get('city'))
+        if coords:
+            new_case.lat = coords['lat']
+            new_case.lon = coords['lon']
+
+        db.session.add(new_case)
+        db.session.commit()
+        return redirect(url_for('index'))
+    except Exception as e:
+        print(f"Hata: {e}")
+        return "Kaydedilirken hata oluştu", 500
+
+@app.route('/api/cases/delete/<int:case_id>', methods=['POST'])
 def api_delete_case(case_id):
-    delete_case(case_id)
+    try:
+        case = Case.query.get_or_404(case_id)
+        db.session.delete(case)
+        db.session.commit()
+    except Exception as e:
+        print(f"Silme Hatası: {e}")
     return redirect(url_for('index'))
 
 @app.route('/api/planla', methods=['POST'])
 def api_planla():
-    selected_ids = request.form.getlist('selected_cases')
+    selected_ids = request.form.getlist('selected_cases[]') # AJAX array params often come with []
+    if not selected_ids:
+        selected_ids = request.form.getlist('selected_cases')
+
     start_date = request.form.get('start_date')
     start_city = request.form.get('start_city', 'Bursa')
 
     route_data = calculate_route(selected_ids, start_city, start_date)
-
-    # AJAX ile dönüyorsa JSON, form submit ise render
-    # Screenshot'ta sayfa yenilenmeden sağ tarafta çıkıyor gibi,
-    # ama basitlik için template render yapabiliriz veya json dönebiliriz.
-    # Şimdilik JSON dönelim, frontend JS ile basarız.
     return jsonify(route_data)
 
-@app.route('/init-db')
-def trigger_init_db():
-    init_db.init_pocketbase()
-    return "DB Init Triggered", 200
+def init_db():
+    with app.app_context():
+        # Wait for DB
+        retries = 30
+        while retries > 0:
+            try:
+                db.create_all()
+                print("Veritabanı tabloları oluşturuldu.")
+                break
+            except Exception as e:
+                print(f"DB Bağlantısı bekleniyor... ({e})")
+                time.sleep(2)
+                retries -= 1
 
 if __name__ == '__main__':
-    # İlk açılışta DB init deneyelim (background thread veya blocking)
-    try:
-        init_db.init_pocketbase()
-    except Exception as e:
-        print(f"Init DB Warning: {e}")
-
+    # Initialize DB on startup
+    init_db()
     app.run(host='0.0.0.0', port=5000, debug=True)

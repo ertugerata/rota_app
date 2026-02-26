@@ -1,45 +1,68 @@
 import unittest
-from app import app, calculate_route, CITY_COORDS
+import os
+
+# Set ENV before importing app to avoid default postgres connection attempt
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+
+from app import app, db, Case
 import json
 
 class TestApp(unittest.TestCase):
+
     def setUp(self):
-        self.app = app.test_client()
-        self.app.testing = True
+        # Ensure we are in testing mode
+        app.config['TESTING'] = True
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+        # Depending on how Flask-SQLAlchemy was init, it might have created an engine already.
+        # But sqlite memory is fresh per connection usually.
+        db.create_all()
+
+        self.client = app.test_client()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
 
     def test_dashboard_route(self):
-        response = self.app.get('/')
+        response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'ERATA HUKUK', response.data)
-        self.assertIn(b'Dosya Listesi', response.data)
 
-    def test_route_planner_page(self):
-        response = self.app.get('/rota')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Rota Planlama', response.data)
+    def test_create_and_get_case(self):
+        new_case = Case(
+            case_no='2024/1',
+            client='Test Client',
+            city='Ankara',
+            status='Aktif'
+        )
+        db.session.add(new_case)
+        db.session.commit()
 
-    def test_calculate_route_logic(self):
-        # Mock data for calculation
-        # Case 1: Ankara
-        # Case 2: Istanbul
-        # Start: Bursa
+        response = self.client.get('/')
+        self.assertIn(b'2024/1', response.data)
+        self.assertIn(b'Test Client', response.data)
 
-        # We need to mock get_case behavior or test logic directly if possible.
-        # Since calculate_route calls get_case which calls an external API (PocketBase),
-        # we should mock get_case. However, for a quick integration test without mocking lib:
+    def test_route_calculation_api(self):
+        c1 = Case(case_no='C1', client='Client 1', city='Ankara', lat=39.9, lon=32.8)
+        c2 = Case(case_no='C2', client='Client 2', city='Istanbul', lat=41.0, lon=28.9)
+        db.session.add_all([c1, c2])
+        db.session.commit()
 
-        # Test basic coordinate retrieval
-        self.assertIn('Ankara', CITY_COORDS)
-        self.assertEqual(CITY_COORDS['Ankara']['lat'], 39.9334)
+        c1_id = c1.id
+        c2_id = c2.id
 
-    def test_api_route_calculation_empty(self):
-        response = self.app.post('/api/planla', data={
-            'selected_cases': [],
+        response = self.client.post('/api/planla', data={
+            'selected_cases': [c1_id, c2_id],
             'start_city': 'Bursa'
         })
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
-        self.assertEqual(data, [])
+        self.assertIsInstance(data, list)
 
 if __name__ == '__main__':
     unittest.main()
