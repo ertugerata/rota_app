@@ -5,7 +5,7 @@ Bu proje, hukuk büroları için avukatların duruşma veya dosya takibi amacıy
 **Özellikler:**
 - **Otomatik Rota Planlama:** Gidilecek adliyeleri birbirine en yakın olacak şekilde sıralar.
 - **Zaman Yönetimi:** Mesai saatleri (09:00 - 17:00) ve hafta sonu tatillerini dikkate alarak varış/çıkış saatlerini hesaplar.
-- **Entegrasyon:** Verileri doğrudan PocketBase veritabanından çeker.
+- **Veritabanı:** Verileri PostgreSQL veritabanında saklar.
 - **Harita Servisi:** Rota hesaplamaları için açık kaynaklı OSRM (Open Source Routing Machine) API kullanılır.
 
 ## 🚀 Kurulum ve Başlatma
@@ -18,70 +18,46 @@ Bu projeyi çalıştırmak için bilgisayarınızda **Docker** ve **Docker Compo
    cd <proje-klasoru>
    ```
 
-2. **Uygulamayı Başlatın:**
+2. **Çevresel Değişkenleri Ayarlayın:**
+   `.env` dosyasını oluşturun veya mevcut olanı düzenleyin. Örnek `.env` içeriği:
+   ```env
+   POSTGRES_USER=admin
+   POSTGRES_PASSWORD=AvukatRota2026!
+   POSTGRES_DB=hukukburosu
+   DATABASE_URL=postgresql://admin:AvukatRota2026!@db:5432/hukukburosu
+   ```
+
+3. **Uygulamayı Başlatın:**
    Terminalde şu komutu çalıştırın:
    ```bash
    docker-compose up -d --build
    ```
-   Bu komut hem Flask web uygulamasını hem de PocketBase veritabanını başlatacaktır.
+   Bu komut hem Flask web uygulamasını hem de PostgreSQL veritabanını başlatacaktır.
 
-3. **Erişim:**
+4. **Erişim:**
    - **Web Arayüzü:** [http://localhost:5000](http://localhost:5000)
-   - **PocketBase Paneli:** [http://localhost:8090/_/](http://localhost:8090/_/)
 
-## 🗄️ PocketBase Kurulumu ve Veri Girişi
+## 🗄️ Veri Girişi ve Yönetimi
 
-Uygulamanın çalışabilmesi için PocketBase üzerinde belirli koleksiyonların (tabloların) oluşturulması gerekmektedir.
+Uygulama, PostgreSQL veritabanı ile çalışmaktadır. Web arayüzü üzerinden dosya ekleme, silme ve listeleme işlemleri yapılabilir.
 
-### 1. Yönetici Girişi
-PocketBase paneline ([http://localhost:8090/_/](http://localhost:8090/_/)) aşağıdaki bilgilerle giriş yapabilirsiniz (Bu bilgiler `docker-compose.yml` içinden değiştirilebilir):
+### Dosya Ekleme
+Web arayüzündeki "Yeni Dosya" butonunu kullanarak yeni dava dosyaları ekleyebilirsiniz. Şehir seçimi yapıldığında koordinatlar otomatik olarak atanır.
 
-- **E-posta:** `admin@hukukburosu.com`
-- **Şifre:** `AvukatRota2026!`
-
-### 2. Gerekli Koleksiyonlar (Collections)
-
-Aşağıdaki iki koleksiyonu oluşturun.
-
-#### A. `courthouses` (Adliyeler)
-Adliyelerin konum bilgilerini tutar.
-- **Name:** `courthouses`
-- **Type:** Base
-- **Fields (Alanlar):**
-  - `name` (Type: **Text**) -> Örn: "Çağlayan Adliyesi"
-  - `city` (Type: **Text**) -> Örn: "İstanbul"
-  - `lat` (Type: **Number**) -> Enlem (Örn: 41.068)
-  - `lon` (Type: **Number**) -> Boylam (Örn: 28.979)
-
-#### B. `cases` (Dosyalar)
-Takip edilecek dava dosyalarını tutar.
-- **Name:** `cases`
-- **Type:** Base
-- **Fields (Alanlar):**
-  - `case_no` (Type: **Text**) -> Örn: "2023/154 Esas"
-  - `status` (Type: **Select**) -> Seçenekler: `Açık`, `Kapalı`. (Uygulama sadece "Açık" olanları çeker).
-  - `courthouse_id` (Type: **Relation**) ->
-    - **Collection:** `courthouses`
-    - **Max Select:** 1
-    - **Cascade Delete:** İşaretlemeyin (tercihen).
-
-### 3. Örnek Veri Girişi
-Önce `courthouses` koleksiyonuna birkaç adliye ekleyin, ardından `cases` koleksiyonuna bu adliyelerle ilişkili ve durumu "Açık" olan dosyalar ekleyin.
-
-## 🛠️ Kullanım
-
-1. **Web Arayüzüne Gidin:** [http://localhost:5000](http://localhost:5000) adresini açın.
-2. **Rota Oluşturun:** "Haftalık Rotayı Oluştur" butonuna tıklayın.
-3. **Sonuçları İnceleyin:**
-   - Sistem, Bursa (varsayılan merkez) çıkışlı en uygun rotayı çizer.
+### Rota Planlama
+1. **Web Arayüzüne Gidin:** [http://localhost:5000/rota](http://localhost:5000/rota) adresini açın.
+2. **Dosyaları Seçin:** Listeden gitmek istediğiniz dosyaları seçin.
+3. **Başlangıç Bilgilerini Girin:** Başlangıç şehri ve haftasını seçin.
+4. **Rota Oluşturun:** "Rota Hesapla" butonuna tıklayın.
+5. **Sonuçları İnceleyin:**
+   - Sistem, seçilen başlangıç noktasından en uygun rotayı çizer.
    - Her adliye için tahmini varış ve işlem bitiş sürelerini gösterir.
-   - Mesai saatleri dışına taşan işlemler otomatik olarak ertesi güne veya Pazartesiye kaydırılır.
 
 ## ⚙️ Yapılandırma ve Notlar
 
-- **Başlangıç Noktası:** Varsayılan olarak "Bursa Ofis" (40.1828, 29.0667) ayarlanmıştır. Bunu değiştirmek için `app.py` dosyasındaki `current_location` değişkenini düzenleyebilirsiniz.
+- **Başlangıç Noktası:** Varsayılan olarak "Bursa Ofis" ayarlanmıştır.
 - **İşlem Süresi:** Her dosya için varsayılan işlem süresi 45 dakika olarak ayarlanmıştır (`app.py` içinde değiştirilebilir).
-- **API:** Rota hesaplaması için `router.project-osrm.org` kullanılmaktadır. Yoğun isteklerde kendi OSRM sunucunuzu kurmanız önerilir.
+- **API:** Rota hesaplaması için `router.project-osrm.org` kullanılmaktadır.
 
 ## 🐳 Docker Yönetimi
 
