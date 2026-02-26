@@ -68,9 +68,19 @@
                 <option value="3">Bursa</option>
             </select>
         </div>
-        <button class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#addCaseModal">
-            <i class="fas fa-plus"></i> Yeni Dosya
-        </button>
+        <div>
+            <div class="btn-group me-2">
+                <button type="button" class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
+                    <i class="fas fa-file-excel text-success"></i> Excel Yükle
+                </button>
+                <a href="/api/download_template" class="btn btn-outline-light" title="Şablon İndir">
+                    <i class="fas fa-download"></i>
+                </a>
+            </div>
+            <button class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#addCaseModal">
+                <i class="fas fa-plus"></i> Yeni Dosya
+            </button>
+        </div>
     </div>
 
     <!-- Case Table -->
@@ -126,6 +136,33 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Excel Modal -->
+<div class="modal fade" id="uploadExcelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-gold fw-bold">Excel ile Toplu Yükle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/api/upload_excel" method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Excel Dosyası Seç</label>
+                        <input class="form-control" type="file" id="excelFile" name="file" accept=".xlsx, .xls" required>
+                        <div class="form-text text-muted">
+                            Lütfen önce <a href="/api/download_template" class="text-info">şablonu indirin</a> ve ona göre doldurun.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-gold">Yükle</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
