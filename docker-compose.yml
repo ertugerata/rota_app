@@ -1,24 +1,24 @@
 version: '3.8'
 
 services:
-  # 1. Veritabanı Servisi (PocketBase)
-  pocketbase:
-    image: ghcr.io/muchobien/pocketbase:latest
-    container_name: rota_pocketbase
+  # 1. Veritabanı Servisi (PostgreSQL)
+  db:
+    image: postgres:15
+    container_name: rota_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "8090:8090"
+      - "5432:5432"
     volumes:
-      - pb_data:/pb_data
-    env_file:
-      - .env
-    # Mevcut entrypoint'i ezip kendi bash komutumuzu yazıyoruz
-    entrypoint: ["/bin/sh", "-c"]
-    # Önce admin hesabını oluşturmayı dener (varsa hata vermez '|| true' sayesinde), sonra sunucuyu başlatır
-    command: 
-      - |
-        /usr/local/bin/pocketbase admin create $${PB_ADMIN_EMAIL} $${PB_ADMIN_PASSWORD} || true
-        /usr/local/bin/pocketbase serve --dir /pb_data --http 0.0.0.0:8090
+      - ./pg_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # 2. Web Uygulaması Servisi (Flask)
   web:
@@ -27,10 +27,10 @@ services:
     ports:
       - "5000:5000"
     depends_on:
-      - pocketbase
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
     environment:
-      - POCKETBASE_URL=http://pocketbase:8090
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     restart: unless-stopped
-
-volumes:
-  pb_data:

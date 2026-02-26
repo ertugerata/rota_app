@@ -1,2 +1,4 @@
-Flask==3.0.2
-requests==2.31.0
+flask
+requests
+psycopg2-binary
+flask-sqlalchemy
