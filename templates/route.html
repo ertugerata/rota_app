@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block page_title %}Rota Planlama{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Selection Panel -->
+    <div class="col-md-5">
+
+        <!-- Filter Controls -->
+        <div class="card mb-3 p-3">
+            <h5 class="card-title text-gold mb-3"><i class="fas fa-filter me-2"></i> Filtreler</h5>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label text-muted small">BAŞLANGIÇ HAFTASI</label>
+                    <input type="week" id="weekPicker" class="form-control" value="2026-W09">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small">BAŞLANGIÇ ŞEHRİ</label>
+                    <select id="startCity" class="form-select">
+                        <option value="Bursa" selected>Bursa</option>
+                        <option value="İstanbul">İstanbul</option>
+                        <option value="Ankara">Ankara</option>
+                        <option value="İzmir">İzmir</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Case List for Selection -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 text-white">Gidilecek Dosyalar (Seçin)</h6>
+                <span class="badge bg-secondary">{{ cases|length }} Adet</span>
+            </div>
+            <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+                <ul class="list-group list-group-flush" id="caseList">
+                    {% for case in cases %}
+                    <li class="list-group-item bg-transparent border-bottom border-secondary text-white">
+                        <div class="form-check">
+                            <input class="form-check-input case-checkbox" type="checkbox" value="{{ case.id }}" id="chk_{{ case.id }}">
+                            <label class="form-check-label w-100" for="chk_{{ case.id }}">
+                                <div class="d-flex justify-content-between">
+                                    <strong>{{ case.case_no }} — {{ case.client }}</strong>
+                                    {% if case.priority == 'Acil' %}
+                                        <span class="badge bg-danger">ACİL</span>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted d-block">
+                                    <i class="fas fa-map-marker-alt text-primary"></i> {{ case.city }}
+                                    {% if case.distance %} ({{ case.distance }} km) {% endif %}
+                                </small>
+                                <small class="text-secondary">{{ case.court_office }} • {{ case.status }}</small>
+                            </label>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="card-footer text-center">
+                <button class="btn btn-gold w-100 py-2" id="btnCalculate">
+                    <i class="fas fa-route me-2"></i> Rota Hesapla
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Panel -->
+    <div class="col-md-7">
+        <div class="card h-100">
+            <div class="card-header bg-gold text-dark">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-map-marked-alt me-2"></i> Optimum Rota</h5>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-center align-items-center" id="emptyState">
+                <div class="text-center text-muted opacity-50">
+                    <i class="far fa-compass fa-5x mb-3"></i>
+                    <h4>Henüz Rota Hesaplanmadı</h4>
+                    <p>Soldaki listeden dosyaları seçip "Rota Hesapla" butonuna basın.</p>
+                </div>
+            </div>
+
+            <div class="card-body p-0 d-none" id="resultContent" style="overflow-y: auto; max-height: 700px;">
+                <div class="timeline p-4">
+                    <!-- Timeline items will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        $('#btnCalculate').click(function() {
+            // Get selected cases
+            var selectedCases = [];
+            $('.case-checkbox:checked').each(function() {
+                selectedCases.push($(this).val());
+            });
+
+            if (selectedCases.length === 0) {
+                alert('Lütfen en az bir dosya seçin!');
+                return;
+            }
+
+            var startCity = $('#startCity').val();
+            var startDate = $('#weekPicker').val(); // 2026-W09
+
+            // Show loading
+            $('#btnCalculate').html('<i class="fas fa-spinner fa-spin"></i> Hesaplanıyor...');
+            $('#btnCalculate').prop('disabled', true);
+
+            $.ajax({
+                url: '/api/planla',
+                method: 'POST',
+                data: {
+                    'selected_cases': selectedCases,
+                    'start_city': startCity,
+                    'start_date': startDate
+                },
+                success: function(response) {
+                    renderRoute(response);
+                },
+                error: function(err) {
+                    alert('Rota hesaplanırken hata oluştu.');
+                    console.error(err);
+                },
+                complete: function() {
+                    $('#btnCalculate').html('<i class="fas fa-route me-2"></i> Rota Hesapla');
+                    $('#btnCalculate').prop('disabled', false);
+                }
+            });
+        });
+
+        function renderRoute(routeData) {
+            $('#emptyState').addClass('d-none');
+            $('#resultContent').removeClass('d-none');
+
+            var html = '';
+
+            if (routeData.length === 0) {
+                html = '<div class="alert alert-warning m-3">Seçilen kriterlere uygun rota bulunamadı.</div>';
+            } else {
+                html += '<div class="list-group list-group-flush">';
+
+                routeData.forEach(function(step) {
+                    html += `
+                        <div class="list-group-item bg-transparent border-bottom border-secondary text-white py-3">
+                            <div class="d-flex w-100 justify-content-between align-items-center mb-2">
+                                <h5 class="mb-0 text-gold">
+                                    <span class="badge bg-gold text-dark me-2">${step.step}</span>
+                                    ${step.city}
+                                </h5>
+                                <small class="text-muted"><i class="fas fa-road"></i> ${step.distance} km</small>
+                            </div>
+
+                            <div class="ms-4 ps-2 border-start border-secondary">
+                                <p class="mb-1"><i class="fas fa-building text-info me-2"></i> ${step.location_name}</p>
+                                <div class="d-flex gap-3 text-sm mb-2">
+                                    <span class="badge bg-success"><i class="fas fa-clock"></i> Varış: ${step.arrival}</span>
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-sign-out-alt"></i> Ayrılış: ${step.departure}</span>
+                                </div>
+                                <small class="text-muted d-block">
+                                    <i class="fas fa-folder me-1"></i> Dosyalar: <span class="text-white">${step.cases}</span>
+                                </small>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+
+                // Summary Footer
+                var totalDist = routeData.reduce((acc, curr) => acc + parseFloat(curr.distance), 0);
+                html += `
+                    <div class="p-3 bg-dark text-center border-top border-secondary">
+                        <h6 class="text-white mb-0">Toplam Mesafe: <span class="text-gold">${Math.round(totalDist)} km</span></h6>
+                    </div>
+                `;
+            }
+
+            $('#resultContent').html(html);
+        }
+    });
+</script>
+{% endblock %}
