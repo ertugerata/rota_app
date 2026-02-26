@@ -1,0 +1,43 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv
+env.bak
+venv.bak
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+develop-eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+.tar.gz
+.whl
+
+# Flask stuff
+instance/
+.webassets-cache
+
+# Docker
+pg_data/
+docker-compose.override.yml
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+.DS_Store
