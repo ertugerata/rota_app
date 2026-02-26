@@ -1,5 +1,7 @@
 import unittest
 import os
+import io
+import pandas as pd
 
 # Set ENV before importing app to avoid default postgres connection attempt
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
@@ -63,6 +65,52 @@ class TestApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertIsInstance(data, list)
+
+    def test_download_template(self):
+        response = self.client.get('/api/download_template')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    def test_upload_excel(self):
+        # Create a sample Excel file in memory
+        df = pd.DataFrame({
+            'case_no': ['2024/TEST'],
+            'client': ['Test Client'],
+            'city': ['Ankara'],
+            'status': ['Aktif']
+        })
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        output.seek(0)
+
+        response = self.client.post('/api/upload_excel', data={
+            'file': (output, 'test.xlsx')
+        }, content_type='multipart/form-data')
+
+        self.assertEqual(response.status_code, 302) # Redirects to index
+
+        # Verify data inserted
+        case = Case.query.filter_by(case_no='2024/TEST').first()
+        self.assertIsNotNone(case)
+        self.assertEqual(case.client, 'Test Client')
+        self.assertEqual(case.city, 'Ankara')
+
+        # Test Duplicate Prevention
+        # Create a new BytesIO since the previous one might be closed
+        output2 = io.BytesIO()
+        with pd.ExcelWriter(output2, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        output2.seek(0)
+
+        response = self.client.post('/api/upload_excel', data={
+            'file': (output2, 'test.xlsx')
+        }, content_type='multipart/form-data')
+        self.assertEqual(response.status_code, 302)
+
+        # Count should still be 1
+        count = Case.query.filter_by(case_no='2024/TEST').count()
+        self.assertEqual(count, 1)
 
 if __name__ == '__main__':
     unittest.main()

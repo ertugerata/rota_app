@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 import requests
 from datetime import datetime, timedelta
@@ -6,6 +6,8 @@ import os
 import json
 import time
 from sqlalchemy import or_
+import pandas as pd
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -302,6 +304,116 @@ def api_planla():
 
     route_data = calculate_route(selected_ids, start_city, start_date)
     return jsonify(route_data)
+
+
+@app.route('/api/download_template')
+def download_template():
+    # Create a sample DataFrame
+    data = {
+        'case_no': ['2024/1234', '2024/5678'],
+        'client': ['Ahmet Yılmaz', 'Mehmet Demir'],
+        'opponent': ['ABC Şirketi', 'XYZ Ltd.'],
+        'city': ['İstanbul', 'Ankara'],
+        'district': ['Kadıköy', 'Çankaya'],
+        'court_office': ['1. Asliye Hukuk', '2. İş Mahkemesi'],
+        'case_type': ['Hukuk Davası', 'İş Davası'],
+        'status': ['Aktif', 'Aktif'],
+        'priority': ['Normal', 'Acil'],
+        'follower_lawyer': ['Av. Ali Veli', 'Av. Ayşe Fatma'],
+        'authorized_lawyer': ['Av. M.F. ERATA', 'Av. M.F. ERATA'],
+        'due_date': ['2024-12-31', '2025-01-15'],
+        'description': ['Örnek açıklama 1', 'Örnek açıklama 2']
+    }
+    df = pd.DataFrame(data)
+
+    # Save to BytesIO
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Dosyalar')
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='dosya_yukleme_sablonu.xlsx'
+    )
+
+
+@app.route('/api/upload_excel', methods=['POST'])
+def upload_excel():
+    if 'file' not in request.files:
+        return "Dosya yüklenmedi", 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return "Dosya seçilmedi", 400
+
+    if file and (file.filename.endswith('.xlsx') or file.filename.endswith('.xls')):
+        try:
+            df = pd.read_excel(file)
+
+            # Column mapping checks could be added here
+            required_columns = ['case_no', 'city']
+            for col in required_columns:
+                if col not in df.columns:
+                    return f"Hata: '{col}' sütunu bulunamadı.", 400
+
+            count = 0
+            for _, row in df.iterrows():
+                # Check for valid case_no
+                if pd.isna(row.get('case_no')) or str(row.get('case_no')).strip() == '':
+                    continue
+
+                case_no_val = str(row.get('case_no')).strip()
+
+                # Check if case_no exists to prevent duplicates
+                existing_case = Case.query.filter_by(case_no=case_no_val).first()
+                if existing_case:
+                    continue
+
+                due_date_val = None
+                if pd.notna(row.get('due_date')):
+                    try:
+                        due_date_val = pd.to_datetime(row.get('due_date')).date()
+                    except:
+                        due_date_val = None
+
+                new_case = Case(
+                    case_no=case_no_val,
+                    client=str(row.get('client', '')) if pd.notna(row.get('client')) else None,
+                    opponent=str(row.get('opponent', '')) if pd.notna(row.get('opponent')) else None,
+                    city=str(row.get('city', '')) if pd.notna(row.get('city')) else None,
+                    district=str(row.get('district', '')) if pd.notna(row.get('district')) else None,
+                    court_office=str(row.get('court_office', '')) if pd.notna(row.get('court_office')) else None,
+                    case_type=str(row.get('case_type', '')) if pd.notna(row.get('case_type')) else None,
+                    status=str(row.get('status', 'Aktif')) if pd.notna(row.get('status')) else 'Aktif',
+                    priority=str(row.get('priority', 'Normal')) if pd.notna(row.get('priority')) else 'Normal',
+                    follower_lawyer=str(row.get('follower_lawyer', '')) if pd.notna(row.get('follower_lawyer')) else None,
+                    authorized_lawyer=str(row.get('authorized_lawyer', '')) if pd.notna(row.get('authorized_lawyer')) else None,
+                    description=str(row.get('description', '')) if pd.notna(row.get('description')) else None,
+                    due_date=due_date_val
+                )
+
+                # Auto coordinates
+                city_name = str(row.get('city', ''))
+                coords = CITY_COORDS.get(city_name)
+                if coords:
+                    new_case.lat = coords['lat']
+                    new_case.lon = coords['lon']
+
+                db.session.add(new_case)
+                count += 1
+
+            db.session.commit()
+            return redirect(url_for('index'))
+
+        except Exception as e:
+            print(f"Excel yükleme hatası: {e}")
+            return f"Hata oluştu: {str(e)}", 500
+
+    return "Geçersiz dosya formatı", 400
 
 def init_db():
     with app.app_context():

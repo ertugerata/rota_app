@@ -2,3 +2,5 @@ flask
 requests
 psycopg2-binary
 flask-sqlalchemy
+pandas
+openpyxl
