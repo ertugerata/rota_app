@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block page_title %}Dosya Listesi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card p-3 h-100">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="text-muted text-uppercase mb-1">Toplam Dosya</h6>
+                        <h2 class="mb-0 fw-bold">{{ stats.total }}</h2>
+                        <small class="text-success"><i class="fas fa-arrow-up"></i> %5 artış</small>
+                    </div>
+                    <div class="text-primary display-6"><i class="fas fa-folder-open"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 h-100">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="text-muted text-uppercase mb-1">Şehir Sayısı</h6>
+                        <h2 class="mb-0 fw-bold">{{ stats.cities }}</h2>
+                        <small class="text-muted">Farklı il</small>
+                    </div>
+                    <div class="text-info display-6"><i class="fas fa-map-marker-alt"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 h-100">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="text-muted text-uppercase mb-1">Acil Dosya</h6>
+                        <h2 class="mb-0 fw-bold text-danger">{{ stats.urgent }}</h2>
+                        <small class="text-danger">Öncelikli işlem</small>
+                    </div>
+                    <div class="text-danger display-6"><i class="fas fa-exclamation-triangle"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 h-100">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="text-muted text-uppercase mb-1">Duruşma Bekleyen</h6>
+                        <h2 class="mb-0 fw-bold text-warning">{{ stats.hearings }}</h2>
+                        <small class="text-warning">Yaklaşan duruşmalar</small>
+                    </div>
+                    <div class="text-warning display-6"><i class="fas fa-gavel"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="d-flex justify-content-between mb-3 align-items-center">
+        <div class="d-flex gap-2 w-50">
+            <input type="text" class="form-control" id="searchInput" placeholder="Dosya ara..." style="background-color: #1e293b; color: white;">
+            <select class="form-select" style="max-width: 150px; background-color: #1e293b; color: white;">
+                <option selected>Tüm Şehirler</option>
+                <option value="1">Ankara</option>
+                <option value="2">İstanbul</option>
+                <option value="3">Bursa</option>
+            </select>
+        </div>
+        <button class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#addCaseModal">
+            <i class="fas fa-plus"></i> Yeni Dosya
+        </button>
+    </div>
+
+    <!-- Case Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-dark text-white">
+                        <tr>
+                            <th scope="col"><input type="checkbox" class="form-check-input"></th>
+                            <th scope="col">Dosya No</th>
+                            <th scope="col">Müvekkil</th>
+                            <th scope="col">Karşı Taraf</th>
+                            <th scope="col">Şehir</th>
+                            <th scope="col">Mahkeme / Daire</th>
+                            <th scope="col">Dosya Türü</th>
+                            <th scope="col">Durum</th>
+                            <th scope="col" class="text-end">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for case in cases %}
+                        <tr>
+                            <td><input type="checkbox" class="form-check-input"></td>
+                            <td class="fw-bold">{{ case.case_no }}</td>
+                            <td>{{ case.client }}</td>
+                            <td>{{ case.opponent }}</td>
+                            <td><span class="badge bg-primary rounded-pill">{{ case.city }}</span></td>
+                            <td>{{ case.court_office }}</td>
+                            <td>{{ case.case_type }}</td>
+                            <td>
+                                {% if case.status == 'Aktif' %}
+                                    <span class="badge bg-success">AKTİF</span>
+                                {% elif case.status == 'Duruşma Bekliyor' %}
+                                    <span class="badge bg-warning text-dark">DURUŞMA</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ case.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-info" title="Düzenle"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" title="Sil" onclick="deleteCase('{{ case.id }}')"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                <i class="fas fa-folder-open fa-3x mb-3"></i><br>
+                                Henüz kayıtlı dosya yok.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Case Modal -->
+<div class="modal fade" id="addCaseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-gold fw-bold">Yeni Dosya Ekle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/api/cases" method="POST">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Dosya No</label>
+                            <input type="text" class="form-control" name="case_no" placeholder="Örn: 2024/1234" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Dosya Türü</label>
+                            <select class="form-select" name="case_type">
+                                <option value="Hukuk Davası">Hukuk Davası</option>
+                                <option value="Ceza Davası">Ceza Davası</option>
+                                <option value="İdari Dava">İdari Dava</option>
+                                <option value="Tüketici Davası">Tüketici Davası</option>
+                                <option value="Ticaret Davası">Ticaret Davası</option>
+                                <option value="İcra Takibi">İcra Takibi</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Müvekkil</label>
+                            <input type="text" class="form-control" name="client" placeholder="Ad Soyad / Ünvan">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Karşı Taraf</label>
+                            <input type="text" class="form-control" name="opponent" placeholder="Ad Soyad / Ünvan">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Şehir (İl)</label>
+                            <select class="form-select" name="city" required>
+                                <option value="Ankara">Ankara</option>
+                                <option value="İstanbul">İstanbul</option>
+                                <option value="İzmir">İzmir</option>
+                                <option value="Bursa">Bursa</option>
+                                <option value="Antalya">Antalya</option>
+                                <option value="Adana">Adana</option>
+                                <option value="Konya">Konya</option>
+                                <option value="Gaziantep">Gaziantep</option>
+                                <option value="Kocaeli">Kocaeli</option>
+                                <option value="Eskişehir">Eskişehir</option>
+                                <option value="Mersin">Mersin</option>
+                                <option value="Diyarbakır">Diyarbakır</option>
+                                <option value="Samsun">Samsun</option>
+                                <option value="Kayseri">Kayseri</option>
+                                <option value="Sakarya">Sakarya</option>
+                                <option value="Şanlıurfa">Şanlıurfa</option>
+                                <option value="Trabzon">Trabzon</option>
+                                <option value="Van">Van</option>
+                                <option value="Erzurum">Erzurum</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">İlçe</label>
+                            <input type="text" class="form-control" name="district" placeholder="İlçe adı">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Mahkeme / Daire</label>
+                            <input type="text" class="form-control" name="court_office" placeholder="Örn: 3. Asliye Hukuk Mahkemesi">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Durum</label>
+                            <select class="form-select" name="status">
+                                <option value="Aktif">Aktif</option>
+                                <option value="Duruşma Bekliyor">Duruşma Bekliyor</option>
+                                <option value="Keşif">Keşif</option>
+                                <option value="Bilirkişi">Bilirkişi</option>
+                                <option value="Kapandı">Kapandı</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Öncelik</label>
+                            <select class="form-select" name="priority">
+                                <option value="Normal">Normal</option>
+                                <option value="Acil">Acil</option>
+                                <option value="Kritik">Kritik</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Takipçi Avukat</label>
+                            <input type="text" class="form-control" name="follower_lawyer" placeholder="Av. Adı Soyadı">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Yetkili Avukat</label>
+                            <input type="text" class="form-control" name="authorized_lawyer" value="Av. M.F. ERATA">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-gold">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function deleteCase(id) {
+        if(confirm('Bu dosyayı silmek istediğinize emin misiniz?')) {
+            // Basit POST request ile silme
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/cases/delete/' + id;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
+{% endblock %}
