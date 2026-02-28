@@ -11,8 +11,10 @@ from io import BytesIO
 
 app = Flask(__name__)
 
-# PostgreSQL Konfigürasyonu
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "postgresql://admin:AvukatRota2026!@localhost:5432/hukukburosu")
+# Veritabanı Konfigürasyonu (Supabase PostgreSQL uyumlu)
+# Supabase'den aldığınız Connection String'i DATABASE_URL ortam değişkenine tanımlayabilirsiniz.
+# Örn: postgresql://postgres.[proje_id]:[sifre]@aws-0-[bolge].pooler.supabase.com:6543/postgres
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "sqlite:///local_fallback.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -340,6 +342,43 @@ def download_template():
         download_name='dosya_yukleme_sablonu.xlsx'
     )
 
+
+@app.route('/api/export_excel')
+def export_excel():
+    cases = Case.query.order_by(Case.created_at.desc()).all()
+
+    data = []
+    for case in cases:
+        data.append({
+            'case_no': case.case_no,
+            'client': case.client,
+            'opponent': case.opponent,
+            'city': case.city,
+            'district': case.district,
+            'court_office': case.court_office,
+            'case_type': case.case_type,
+            'status': case.status,
+            'priority': case.priority,
+            'follower_lawyer': case.follower_lawyer,
+            'authorized_lawyer': case.authorized_lawyer,
+            'due_date': case.due_date.strftime('%Y-%m-%d') if case.due_date else None,
+            'description': case.description
+        })
+
+    df = pd.DataFrame(data)
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Dosyalar')
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='dosyalar_disa_aktarim.xlsx'
+    )
 
 @app.route('/api/upload_excel', methods=['POST'])
 def upload_excel():

@@ -1,4 +1,10 @@
-# PocketBase Yönetici Giriş Bilgileri
-PB_ADMIN_EMAIL=admin@hukukburosu.com
-# ÖNEMLİ: PocketBase şifreleri en az 10 karakter olmak zorundadır!
-PB_ADMIN_PASSWORD=AvukatRota2026!
+# Supabase PostgreSQL Bağlantı Adresi
+#
+# 1) YERELDE (Local) Supabase kullanmak için (Varsayılan):
+# `npx supabase start` ile başlattığınız yerel Supabase instance'ına bağlanır.
+DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres
+
+# 2) BULUTTA (Cloud) Supabase kullanmak isterseniz üsttekini yorum satırı yapıp alttekini aktifleştirin:
+# Lütfen Supabase projenizin ayarlarından (Project Settings -> Database) "Connection string" kısmındaki bilgileri alıp buraya yapıştırın.
+# Parola kısmını ([YOUR-PASSWORD]) güncellemeyi unutmayın.
+# DATABASE_URL=postgresql://postgres.xxx:YOUR_PASSWORD@aws-0-eu-central-1.pooler.supabase.com:6543/postgres
