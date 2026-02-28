@@ -5,7 +5,7 @@ Bu proje, hukuk büroları için avukatların duruşma veya dosya takibi amacıy
 **Özellikler:**
 - **Otomatik Rota Planlama:** Gidilecek adliyeleri birbirine en yakın olacak şekilde sıralar.
 - **Zaman Yönetimi:** Mesai saatleri (09:00 - 17:00) ve hafta sonu tatillerini dikkate alarak varış/çıkış saatlerini hesaplar.
-- **Veritabanı:** Verileri PostgreSQL veritabanında saklar.
+- **Veritabanı:** Verileri bulut tabanlı Supabase (PostgreSQL) veritabanında saklar.
 - **Harita Servisi:** Rota hesaplamaları için açık kaynaklı OSRM (Open Source Routing Machine) API kullanılır.
 
 ## 🚀 Kurulum ve Başlatma
@@ -19,12 +19,9 @@ Bu projeyi çalıştırmak için bilgisayarınızda **Docker** ve **Docker Compo
    ```
 
 2. **Çevresel Değişkenleri Ayarlayın:**
-   `.env` dosyasını oluşturun veya mevcut olanı düzenleyin. Örnek `.env` içeriği:
+   `.env` dosyasını oluşturun veya mevcut olanı düzenleyin. Supabase'den aldığınız bağlantı adresini (Connection String) `DATABASE_URL` olarak ayarlayın:
    ```env
-   POSTGRES_USER=admin
-   POSTGRES_PASSWORD=AvukatRota2026!
-   POSTGRES_DB=hukukburosu
-   DATABASE_URL=postgresql://admin:AvukatRota2026!@db:5432/hukukburosu
+   DATABASE_URL=postgresql://postgres.xxx:PAROLANIZ@aws-0-eu-central-1.pooler.supabase.com:6543/postgres
    ```
 
 3. **Uygulamayı Başlatın:**
@@ -32,17 +29,20 @@ Bu projeyi çalıştırmak için bilgisayarınızda **Docker** ve **Docker Compo
    ```bash
    docker-compose up -d --build
    ```
-   Bu komut hem Flask web uygulamasını hem de PostgreSQL veritabanını başlatacaktır.
+   Bu komut uygulamanızı başlatacak ve Supabase veritabanınıza bağlanacaktır. İlk açılışta veritabanı tabloları otomatik olarak oluşturulur.
 
 4. **Erişim:**
    - **Web Arayüzü:** [http://localhost:5000](http://localhost:5000)
 
 ## 🗄️ Veri Girişi ve Yönetimi
 
-Uygulama, PostgreSQL veritabanı ile çalışmaktadır. Web arayüzü üzerinden dosya ekleme, silme ve listeleme işlemleri yapılabilir.
+Uygulama, Supabase (PostgreSQL) veritabanı ile çalışmaktadır. Web arayüzü üzerinden dosya ekleme, silme, listeleme ve Excel işlemleri yapılabilir.
 
 ### Dosya Ekleme
-Web arayüzündeki "Yeni Dosya" butonunu kullanarak yeni dava dosyaları ekleyebilirsiniz. Şehir seçimi yapıldığında koordinatlar otomatik olarak atanır.
+Web arayüzündeki "Yeni Dosya" butonunu kullanarak yeni dava dosyaları ekleyebilirsiniz. Şehir seçimi yapıldığında koordinatlar otomatik olarak atanır. Ayrıca "Excel Yükle" seçeneği ile toplu dosya ekleyebilirsiniz.
+
+### Dışa Aktarma
+"Excel İndir" butonuna tıklayarak mevcut veritabanındaki tüm kayıtlarınızı Excel (xlsx) formatında bilgisayarınıza indirebilir, tıpkı şablonla aktardığınız gibi dışarı alabilirsiniz.
 
 ### Rota Planlama
 1. **Web Arayüzüne Gidin:** [http://localhost:5000/rota](http://localhost:5000/rota) adresini açın.
