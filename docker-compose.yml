@@ -1,8 +1,21 @@
 version: '3.8'
 
 services:
+  # Yerel Supabase (PostgreSQL) servisi (Opsiyonel, bulut kullanılmayacaksa)
+  db:
+    image: postgres:15-alpine
+    container_name: rota_postgres_db
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   # Web Uygulaması Servisi (Flask)
-  # Veritabanı olarak Supabase kullanılmaktadır. (Dış PostgreSQL sunucusu)
   web:
     build: .
     container_name: rota_flask_app
@@ -12,4 +25,9 @@ services:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
     restart: unless-stopped
+
+volumes:
+  db_data:

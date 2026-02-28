@@ -18,30 +18,19 @@ Bu projeyi çalıştırmak için bilgisayarınızda **Docker** ve **Docker Compo
    cd <proje-klasoru>
    ```
 
-2. **Yerel Supabase'i Başlatın (İsteğe Bağlı):**
-   Eğer Supabase'i bulut yerine kendi bilgisayarınızda (yerel) çalıştırmak istiyorsanız projede Supabase CLI kullanarak bir veritabanı başlatmalısınız.
-   ```bash
-   # Supabase projesini ilklendirmek (daha önce yapılmadıysa):
-   npx supabase init
-
-   # Yerel Supabase hizmetlerini başlatmak:
-   npx supabase start
-   ```
-   Bu işlem bittiğinde yerel PostgreSQL veritabanı `54322` portundan hizmet verecektir.
-
-3. **Çevresel Değişkenleri Ayarlayın:**
+2. **Çevresel Değişkenleri Ayarlayın:**
    `.env` dosyasını oluşturun veya mevcut olanı düzenleyin (`env-sample.txt` dosyasını kopyalayabilirsiniz).
-   - Yerel kullanım için: `DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres` (Docker içinden yerel Supabase'e erişimi sağlar)
-   - Bulut (Cloud) kullanımı için ilgili satırı yorumdan çıkarıp, Supabase bulut adresinizi yapıştırın.
+   - Yerel kullanım için: `DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres` (Docker Compose ile oluşturulan yerel veritabanına erişimi sağlar)
+   - Bulut (Cloud) Supabase kullanımı için ilgili satırı yorumdan çıkarıp, Supabase bulut adresinizi yapıştırın.
 
-4. **Uygulamayı Başlatın:**
+3. **Uygulamayı ve Yerel Veritabanını Başlatın:**
    Terminalde şu komutu çalıştırın:
    ```bash
-   docker-compose up -d --build
+   docker compose up -d --build
    ```
-   Bu komut uygulamanızı başlatacak ve .env içindeki `DATABASE_URL` hedefinde bulunan Supabase veritabanınıza bağlanacaktır. İlk açılışta veritabanı tabloları otomatik olarak oluşturulur.
+   Bu komut, uygulamanızı ve yerel PostgreSQL (Supabase uyumlu) veritabanınızı Docker içerisinde başlatacaktır. `DATABASE_URL` hedefinde bulunan veritabanınıza bağlanılacak ve ilk açılışta veritabanı tabloları otomatik olarak oluşturulacaktır. Yerel veritabanı dışarıya `54322` portundan açık durumdadır.
 
-5. **Erişim:**
+4. **Erişim:**
    - **Web Arayüzü:** [http://localhost:5000](http://localhost:5000)
 
 ## 🗄️ Veri Girişi ve Yönetimi
@@ -73,9 +62,9 @@ Web arayüzündeki "Yeni Dosya" butonunu kullanarak yeni dava dosyaları ekleyeb
 
 - Uygulamayı durdurmak için:
   ```bash
-  docker-compose down
+  docker compose down
   ```
 - Logları izlemek için:
   ```bash
-  docker-compose logs -f
+  docker compose logs -f
   ```
