@@ -367,10 +367,6 @@ def export_excel():
 
     df = pd.DataFrame(data)
 
-    # Türkçe sütun isimleri için yeniden adlandırma (opsiyonel, şablonla uyumlu kalması için orijinal bırakılabilir ama kullanıcı deneyimi için daha iyi olabilir. Ancak aktardığı gibi dediği için orijinal sütun isimlerini bırakmak daha mantıklı.)
-    # Şablonda da İngilizce key'ler mi var? Şablon download kısmına bakalım:
-    # Şablonda İngilizce isimler kullanılmış. Aynen bırakıyorum.
-
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Dosyalar')

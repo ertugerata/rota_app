@@ -18,20 +18,30 @@ Bu projeyi çalıştırmak için bilgisayarınızda **Docker** ve **Docker Compo
    cd <proje-klasoru>
    ```
 
-2. **Çevresel Değişkenleri Ayarlayın:**
-   `.env` dosyasını oluşturun veya mevcut olanı düzenleyin. Supabase'den aldığınız bağlantı adresini (Connection String) `DATABASE_URL` olarak ayarlayın:
-   ```env
-   DATABASE_URL=postgresql://postgres.xxx:PAROLANIZ@aws-0-eu-central-1.pooler.supabase.com:6543/postgres
-   ```
+2. **Yerel Supabase'i Başlatın (İsteğe Bağlı):**
+   Eğer Supabase'i bulut yerine kendi bilgisayarınızda (yerel) çalıştırmak istiyorsanız projede Supabase CLI kullanarak bir veritabanı başlatmalısınız.
+   ```bash
+   # Supabase projesini ilklendirmek (daha önce yapılmadıysa):
+   npx supabase init
 
-3. **Uygulamayı Başlatın:**
+   # Yerel Supabase hizmetlerini başlatmak:
+   npx supabase start
+   ```
+   Bu işlem bittiğinde yerel PostgreSQL veritabanı `54322` portundan hizmet verecektir.
+
+3. **Çevresel Değişkenleri Ayarlayın:**
+   `.env` dosyasını oluşturun veya mevcut olanı düzenleyin (`env-sample.txt` dosyasını kopyalayabilirsiniz).
+   - Yerel kullanım için: `DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres` (Docker içinden yerel Supabase'e erişimi sağlar)
+   - Bulut (Cloud) kullanımı için ilgili satırı yorumdan çıkarıp, Supabase bulut adresinizi yapıştırın.
+
+4. **Uygulamayı Başlatın:**
    Terminalde şu komutu çalıştırın:
    ```bash
    docker-compose up -d --build
    ```
-   Bu komut uygulamanızı başlatacak ve Supabase veritabanınıza bağlanacaktır. İlk açılışta veritabanı tabloları otomatik olarak oluşturulur.
+   Bu komut uygulamanızı başlatacak ve .env içindeki `DATABASE_URL` hedefinde bulunan Supabase veritabanınıza bağlanacaktır. İlk açılışta veritabanı tabloları otomatik olarak oluşturulur.
 
-4. **Erişim:**
+5. **Erişim:**
    - **Web Arayüzü:** [http://localhost:5000](http://localhost:5000)
 
 ## 🗄️ Veri Girişi ve Yönetimi
