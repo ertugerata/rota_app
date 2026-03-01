@@ -41,3 +41,4 @@ docker-compose.override.yml
 .vscode/
 *.swp
 .DS_Store
+app_output.log
