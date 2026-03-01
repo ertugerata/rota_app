@@ -17,6 +17,18 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+# Sürüm okuma
+def get_version():
+    try:
+        with open('VERSION', 'r') as f:
+            return f.read().strip()
+    except Exception:
+        return "Bilinmiyor"
+
+@app.context_processor
+def inject_version():
+    return dict(version=get_version())
+
 # --- Veritabanı Modelleri ---
 class Case(db.Model):
     __tablename__ = 'cases'
