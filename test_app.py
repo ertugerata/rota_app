@@ -2,6 +2,7 @@ import unittest
 import os
 import io
 import pandas as pd
+from unittest.mock import patch
 
 # Set ENV before importing app to avoid default postgres connection attempt
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
@@ -49,7 +50,11 @@ class TestApp(unittest.TestCase):
         self.assertIn(b'2024/1', response.data)
         self.assertIn(b'Test Client', response.data)
 
-    def test_route_calculation_api(self):
+    @patch('app.get_osrm_route')
+    def test_route_calculation_api(self, mock_get_osrm_route):
+        # Mock OSRM to return fixed distance and duration (e.g., 100km, 60mins)
+        mock_get_osrm_route.return_value = (100, 60)
+
         c1 = Case(case_no='C1', client='Client 1', city='Ankara', lat=39.9, lon=32.8)
         c2 = Case(case_no='C2', client='Client 2', city='Istanbul', lat=41.0, lon=28.9)
         db.session.add_all([c1, c2])
@@ -65,6 +70,7 @@ class TestApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertIsInstance(data, list)
+        self.assertTrue(mock_get_osrm_route.called)
 
     def test_download_template(self):
         response = self.client.get('/api/download_template')

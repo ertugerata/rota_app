@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import json
 import time
@@ -14,6 +14,7 @@ app = Flask(__name__)
 # Veritabanı Konfigürasyonu (Supabase PostgreSQL uyumlu)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "sqlite:///local_fallback.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
 
 db = SQLAlchemy(app)
 
@@ -48,7 +49,7 @@ class Case(db.Model):
     description = db.Column(db.Text)
     lat = db.Column(db.Float, nullable=True)
     lon = db.Column(db.Float, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -73,7 +74,7 @@ class Case(db.Model):
 def get_osrm_route(lat1, lon1, lat2, lon2):
     url = f"http://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
     try:
-        response = requests.get(url, timeout=5).json()
+        response = requests.get(url, timeout=15).json()
         if response.get("code") == "Ok":
             distance_km = response["routes"][0]["distance"] / 1000.0
             duration_min = response["routes"][0]["duration"] / 60.0
@@ -108,6 +109,8 @@ CITY_COORDS = {
 # --- Rota Optimizasyon Algoritması ---
 def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
     # 1. Seçilen dosyaları çek
+    # DÜZELTİLDİ: selected_case_ids listesi string'lerden integer'lara çevrilmeli
+    selected_case_ids = [int(i) for i in selected_case_ids]
     cases = Case.query.filter(Case.id.in_(selected_case_ids)).all()
 
     if not cases:
@@ -118,9 +121,15 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
 
     for case in cases:
         city = case.city
-        coords = CITY_COORDS.get(city, {'lat': 0, 'lon': 0})
+        coords = None
         if case.lat and case.lon:
             coords = {'lat': case.lat, 'lon': case.lon}
+        elif city in CITY_COORDS:
+            coords = CITY_COORDS[city]
+
+        if not coords:
+            # Koordinatları bulunamayan ve sisteme eklenmemiş (lat/lon yok) şehirleri atla
+            continue
 
         city_key = city
 
@@ -194,16 +203,32 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
 
         arrival_time = current_time + timedelta(minutes=best_stop['travel_dur'])
 
-        if arrival_time.hour >= 17 or arrival_time.hour < 9:
-            arrival_time = arrival_time.replace(hour=9, minute=0) + timedelta(days=1)
+        # DÜZELTİLDİ: Gece yarısını geçen seyahatlerde veya mesai dışı durumlarda gün atlaması
+        if arrival_time.hour >= 17:
+            # 17:00'den sonraysa ertesi gün sabah 09:00'a atla
+            arrival_time = arrival_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1)
+            if arrival_time.weekday() >= 5: # Cumartesi/Pazar ise Pazartesiye atla
+                arrival_time += timedelta(days=(7 - arrival_time.weekday()))
+        elif arrival_time.hour < 9:
+            # Gece yarısını geçtiyse (veya sabah 09:00'dan önceyse), zaten yeni güne geçilmiştir, sadece saati 09:00 yap
+            # Eğer gün değişmişse +1 gün eklemeye gerek yok, current_time + travel_dur zaten günü ilerletmiş olabilir
+            # Veya current_time'a göre aynı gün içinde <9 ise
+            if current_time.date() == arrival_time.date():
+                 # Aynı gün içindeyse (nasıl olduysa, mesela 08:00'de başlandıysa) saati 09:00 yap
+                 arrival_time = arrival_time.replace(hour=9, minute=0, second=0, microsecond=0)
+            else:
+                 # Geceyi geçtiyse saati 09:00 yap (gün zaten ilerledi)
+                 arrival_time = arrival_time.replace(hour=9, minute=0, second=0, microsecond=0)
+
             if arrival_time.weekday() >= 5:
                 arrival_time += timedelta(days=(7 - arrival_time.weekday()))
 
         departure_time = arrival_time + timedelta(minutes=(best_stop['case_count'] * 45))
 
         if departure_time.hour >= 17:
-            overtime = departure_time - arrival_time.replace(hour=17, minute=0)
-            departure_time = departure_time.replace(hour=9, minute=0) + timedelta(days=1) + overtime
+            # İşlemler mesai sonrasına taşıyorsa
+            overtime = departure_time - departure_time.replace(hour=17, minute=0, second=0, microsecond=0)
+            departure_time = departure_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1) + overtime
             if departure_time.weekday() >= 5:
                 departure_time += timedelta(days=(7 - departure_time.weekday()))
 
@@ -230,17 +255,23 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
 @app.route('/')
 def index():
     filter_q = request.args.get('search', '')
+    city_filter = request.args.get('city', '')
+
+    query = Case.query
 
     if filter_q:
-        cases = Case.query.filter(
+        query = query.filter(
             or_(
                 Case.case_no.ilike(f'%{filter_q}%'),
                 Case.client.ilike(f'%{filter_q}%'),
                 Case.city.ilike(f'%{filter_q}%')
             )
-        ).order_by(Case.created_at.desc()).all()
-    else:
-        cases = Case.query.order_by(Case.created_at.desc()).all()
+        )
+
+    if city_filter:
+        query = query.filter(Case.city == city_filter)
+
+    cases = query.order_by(Case.created_at.desc()).all()
 
     # Stats
     total_files = Case.query.count()
@@ -297,6 +328,39 @@ def api_create_case():
         print(f"Hata: {e}")
         return "Kaydedilirken hata oluştu", 500
 
+@app.route('/api/cases/update/<int:case_id>', methods=['POST'])
+def api_update_case(case_id):
+    try:
+        case = Case.query.get_or_404(case_id)
+        data = request.form.to_dict()
+
+        case.case_no = data.get('case_no', case.case_no)
+        case.client = data.get('client', case.client)
+        case.opponent = data.get('opponent', case.opponent)
+        case.city = data.get('city', case.city)
+        case.district = data.get('district', case.district)
+        case.court_office = data.get('court_office', case.court_office)
+        case.case_type = data.get('case_type', case.case_type)
+        case.status = data.get('status', case.status)
+        case.priority = data.get('priority', case.priority)
+        case.follower_lawyer = data.get('follower_lawyer', case.follower_lawyer)
+        case.authorized_lawyer = data.get('authorized_lawyer', case.authorized_lawyer)
+        case.description = data.get('description', case.description)
+
+        if data.get('due_date'):
+            case.due_date = datetime.strptime(data.get('due_date'), '%Y-%m-%d')
+
+        coords = CITY_COORDS.get(data.get('city'))
+        if coords:
+            case.lat = coords['lat']
+            case.lon = coords['lon']
+
+        db.session.commit()
+        return redirect(url_for('index'))
+    except Exception as e:
+        print(f"Güncelleme Hatası: {e}")
+        return jsonify({"error": "Güncelleme sırasında bir hata oluştu."}), 500
+
 @app.route('/api/cases/delete/<int:case_id>', methods=['POST'])
 def api_delete_case(case_id):
     try:
@@ -305,6 +369,7 @@ def api_delete_case(case_id):
         db.session.commit()
     except Exception as e:
         print(f"Silme Hatası: {e}")
+        return jsonify({"error": "Silme işlemi sırasında bir hata oluştu."}), 500
     return redirect(url_for('index'))
 
 @app.route('/api/planla', methods=['POST'])

@@ -59,15 +59,17 @@
 
     <!-- Actions Bar -->
     <div class="d-flex justify-content-between mb-3 align-items-center">
-        <div class="d-flex gap-2 w-50">
-            <input type="text" class="form-control" id="searchInput" placeholder="Dosya ara..." style="background-color: #1e293b; color: white;">
-            <select class="form-select" style="max-width: 150px; background-color: #1e293b; color: white;">
-                <option selected>Tüm Şehirler</option>
-                <option value="1">Ankara</option>
-                <option value="2">İstanbul</option>
-                <option value="3">Bursa</option>
+        <form class="d-flex gap-2 w-50" method="GET" action="/">
+            <input type="text" name="search" class="form-control" id="searchInput" placeholder="Dosya ara (Enter'a bas)..." value="{{ request.args.get('search', '') }}" style="background-color: #1e293b; color: white;">
+            <select name="city" class="form-select" style="max-width: 150px; background-color: #1e293b; color: white;" onchange="this.form.submit()">
+                <option value="" {% if not request.args.get('city') %}selected{% endif %}>Tüm Şehirler</option>
+                <option value="Ankara" {% if request.args.get('city') == 'Ankara' %}selected{% endif %}>Ankara</option>
+                <option value="İstanbul" {% if request.args.get('city') == 'İstanbul' %}selected{% endif %}>İstanbul</option>
+                <option value="Bursa" {% if request.args.get('city') == 'Bursa' %}selected{% endif %}>Bursa</option>
+                <option value="İzmir" {% if request.args.get('city') == 'İzmir' %}selected{% endif %}>İzmir</option>
+                <option value="Antalya" {% if request.args.get('city') == 'Antalya' %}selected{% endif %}>Antalya</option>
             </select>
-        </div>
+        </form>
         <div>
             <div class="btn-group me-2">
                 <a href="/api/export_excel" class="btn btn-outline-light">
@@ -124,7 +126,7 @@
                                 {% endif %}
                             </td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-info" title="Düzenle"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-outline-info" title="Düzenle" onclick="openEditModal({{ case.id }}, '{{ case.case_no }}', '{{ case.client }}', '{{ case.opponent or '' }}', '{{ case.city }}', '{{ case.district or '' }}', '{{ case.court_office or '' }}', '{{ case.case_type }}', '{{ case.status }}', '{{ case.priority }}', '{{ case.follower_lawyer or '' }}', '{{ case.authorized_lawyer or '' }}', '{{ case.due_date.strftime('%Y-%m-%d') if case.due_date else '' }}', '{{ case.description|default('', true)|replace('\n', '\\n')|replace('\r', '')|escape }}')"><i class="fas fa-edit"></i></button>
                                 <button class="btn btn-sm btn-outline-danger" title="Sil" onclick="deleteCase('{{ case.id }}')"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
@@ -164,6 +166,118 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="submit" class="btn btn-gold">Yükle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Case Modal -->
+<div class="modal fade" id="editCaseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-info fw-bold">Dosya Düzenle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editCaseForm" method="POST">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Dosya No</label>
+                            <input type="text" class="form-control" name="case_no" id="edit_case_no" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Dosya Türü</label>
+                            <select class="form-select" name="case_type" id="edit_case_type">
+                                <option value="Hukuk Davası">Hukuk Davası</option>
+                                <option value="Ceza Davası">Ceza Davası</option>
+                                <option value="İdari Dava">İdari Dava</option>
+                                <option value="Tüketici Davası">Tüketici Davası</option>
+                                <option value="İcra Takibi">İcra Takibi</option>
+                                <option value="Diğer">Diğer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Müvekkil</label>
+                            <input type="text" class="form-control" name="client" id="edit_client" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Karşı Taraf</label>
+                            <input type="text" class="form-control" name="opponent" id="edit_opponent">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Şehir (İl)</label>
+                            <select class="form-select" name="city" id="edit_city" required>
+                                <option value="Ankara">Ankara</option>
+                                <option value="İstanbul">İstanbul</option>
+                                <option value="İzmir">İzmir</option>
+                                <option value="Bursa">Bursa</option>
+                                <option value="Antalya">Antalya</option>
+                                <option value="Adana">Adana</option>
+                                <option value="Konya">Konya</option>
+                                <option value="Kocaeli">Kocaeli</option>
+                                <option value="Gaziantep">Gaziantep</option>
+                                <option value="Şanlıurfa">Şanlıurfa</option>
+                                <option value="Mersin">Mersin</option>
+                                <option value="Diyarbakır">Diyarbakır</option>
+                                <option value="Kayseri">Kayseri</option>
+                                <option value="Eskişehir">Eskişehir</option>
+                                <option value="Samsun">Samsun</option>
+                                <option value="Denizli">Denizli</option>
+                                <option value="Sakarya">Sakarya</option>
+                                <option value="Trabzon">Trabzon</option>
+                                <option value="Erzurum">Erzurum</option>
+                                <option value="Van">Van</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">İlçe</label>
+                            <input type="text" class="form-control" name="district" id="edit_district">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Mahkeme / İcra Dairesi</label>
+                            <input type="text" class="form-control" name="court_office" id="edit_court_office" placeholder="Örn: Ankara 3. Asliye Hukuk Mahkemesi">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Durum</label>
+                            <select class="form-select" name="status" id="edit_status">
+                                <option value="Aktif">Aktif</option>
+                                <option value="Duruşma Bekliyor">Duruşma Bekliyor</option>
+                                <option value="Karara Çıktı">Karara Çıktı</option>
+                                <option value="İstinaf/Yargıtay">İstinaf/Yargıtay</option>
+                                <option value="Kapalı">Kapalı</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Öncelik</label>
+                            <select class="form-select" name="priority" id="edit_priority">
+                                <option value="Normal">Normal</option>
+                                <option value="Yüksek">Yüksek</option>
+                                <option value="Acil">Acil</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Sorumlu Avukat</label>
+                            <input type="text" class="form-control" name="follower_lawyer" id="edit_follower_lawyer">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Yetki Belgeli Avukat</label>
+                            <input type="text" class="form-control" name="authorized_lawyer" id="edit_authorized_lawyer">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Son İşlem / Duruşma Tarihi</label>
+                            <input type="date" class="form-control" name="due_date" id="edit_due_date">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Açıklama / Notlar</label>
+                            <textarea class="form-control" name="description" id="edit_description" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-info">Güncelle</button>
                 </div>
             </form>
         </div>
@@ -276,6 +390,26 @@
 
 {% block scripts %}
 <script>
+    function openEditModal(id, case_no, client, opponent, city, district, court_office, case_type, status, priority, follower_lawyer, authorized_lawyer, due_date, description) {
+        document.getElementById('editCaseForm').action = '/api/cases/update/' + id;
+        document.getElementById('edit_case_no').value = case_no;
+        document.getElementById('edit_client').value = client;
+        document.getElementById('edit_opponent').value = opponent !== 'None' ? opponent : '';
+        document.getElementById('edit_city').value = city;
+        document.getElementById('edit_district').value = district !== 'None' ? district : '';
+        document.getElementById('edit_court_office').value = court_office !== 'None' ? court_office : '';
+        document.getElementById('edit_case_type').value = case_type;
+        document.getElementById('edit_status').value = status;
+        document.getElementById('edit_priority').value = priority;
+        document.getElementById('edit_follower_lawyer').value = follower_lawyer !== 'None' ? follower_lawyer : '';
+        document.getElementById('edit_authorized_lawyer').value = authorized_lawyer !== 'None' ? authorized_lawyer : '';
+        document.getElementById('edit_due_date').value = due_date !== 'None' ? due_date : '';
+        document.getElementById('edit_description').value = description !== 'None' ? description : '';
+
+        var editModal = new bootstrap.Modal(document.getElementById('editCaseModal'));
+        editModal.show();
+    }
+
     function deleteCase(id) {
         if(confirm('Bu dosyayı silmek istediğinize emin misiniz?')) {
             // Basit POST request ile silme
