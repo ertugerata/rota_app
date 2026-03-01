@@ -114,6 +114,7 @@
             $.ajax({
                 url: '/api/planla',
                 method: 'POST',
+                traditional: true,
                 data: {
                     'selected_cases': selectedCases,
                     'start_city': startCity,

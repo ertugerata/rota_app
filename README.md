@@ -40,6 +40,12 @@ Uygulama, Supabase (PostgreSQL) veritabanı ile çalışmaktadır. Web arayüzü
 ### Dosya Ekleme
 Web arayüzündeki "Yeni Dosya" butonunu kullanarak yeni dava dosyaları ekleyebilirsiniz. Şehir seçimi yapıldığında koordinatlar otomatik olarak atanır. Ayrıca "Excel Yükle" seçeneği ile toplu dosya ekleyebilirsiniz.
 
+### Düzenleme ve Silme
+Eklenmiş dosyaları ilgili satırın sağ tarafındaki **Düzenle** ve **Sil** butonları ile kolayca yönetebilirsiniz. Modal üzerinden dosyayı güncellediğinizde liste de anında güncellenecektir.
+
+### Arama ve Filtreleme
+Yüzlerce dosya arasında hızlıca arama yapabilir ve şehir filtresi ile sadece ilgilendiğiniz bölgesindeki dava dosyalarını listeleyebilirsiniz.
+
 ### Dışa Aktarma
 "Excel İndir" butonuna tıklayarak mevcut veritabanındaki tüm kayıtlarınızı Excel (xlsx) formatında bilgisayarınıza indirebilir, tıpkı şablonla aktardığınız gibi dışarı alabilirsiniz.
 
