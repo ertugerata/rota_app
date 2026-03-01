@@ -12,8 +12,6 @@ from io import BytesIO
 app = Flask(__name__)
 
 # Veritabanı Konfigürasyonu (Supabase PostgreSQL uyumlu)
-# Supabase'den aldığınız Connection String'i DATABASE_URL ortam değişkenine tanımlayabilirsiniz.
-# Örn: postgresql://postgres.[proje_id]:[sifre]@aws-0-[bolge].pooler.supabase.com:6543/postgres
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "sqlite:///local_fallback.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -98,7 +96,6 @@ CITY_COORDS = {
 # --- Rota Optimizasyon Algoritması ---
 def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
     # 1. Seçilen dosyaları çek
-    # selected_case_ids are string IDs from checkbox values
     cases = Case.query.filter(Case.id.in_(selected_case_ids)).all()
 
     if not cases:
@@ -106,16 +103,15 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
 
     # 2. Şehirlere göre grupla
     grouped_destinations = {}
-    
+
     for case in cases:
         city = case.city
-        # Şehir koordinatlarını bul
         coords = CITY_COORDS.get(city, {'lat': 0, 'lon': 0})
         if case.lat and case.lon:
-             coords = {'lat': case.lat, 'lon': case.lon}
+            coords = {'lat': case.lat, 'lon': case.lon}
 
         city_key = city
-        
+
         if city_key not in grouped_destinations:
             grouped_destinations[city_key] = {
                 'name': city,
@@ -125,7 +121,7 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
                 'cases': [],
                 'case_count': 0
             }
-        
+
         grouped_destinations[city_key]['cases'].append(f"{case.case_no} ({case.client})")
         grouped_destinations[city_key]['case_count'] += 1
 
@@ -142,17 +138,18 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
     if start_date_str:
         try:
             if 'W' in start_date_str:
-                 current_time = datetime.strptime(start_date_str + '-1', "%Y-W%W-%w")
+                # DÜZELTİLDİ: ISO hafta formatı için %G-W%V-%u kullanılmalı
+                current_time = datetime.strptime(start_date_str + '-1', "%G-W%V-%u")
             else:
-                 current_time = datetime.strptime(start_date_str, "%Y-%m-%d")
-        except:
+                current_time = datetime.strptime(start_date_str, "%Y-%m-%d")
+        except Exception:
             current_time = datetime.now()
     else:
         current_time = datetime.now()
 
     current_time = current_time.replace(hour=9, minute=0, second=0, microsecond=0)
-    
-    if current_time.weekday() >= 5: 
+
+    if current_time.weekday() >= 5:
         current_time += timedelta(days=(7 - current_time.weekday()))
 
     unvisited = destinations.copy()
@@ -163,16 +160,20 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
     while unvisited:
         best_stop = None
         shortest_dur = float('inf')
-        
+
         for dest in unvisited:
             if dest['lat'] == 0 and dest['lon'] == 0:
-                 dist, dur = 100, 60
+                dist, dur = 100, 60
             else:
-                dist, dur = get_osrm_route(current_location['lat'], current_location['lon'], dest['lat'], dest['lon'])
+                dist, dur = get_osrm_route(
+                    current_location['lat'], current_location['lon'],
+                    dest['lat'], dest['lon']
+                )
 
             if dur < shortest_dur:
                 shortest_dur = dur
-                best_stop = dest
+                # DÜZELTİLDİ: dict(dest) ile sığ kopya alınıyor, orijinal dict bozulmuyor
+                best_stop = dict(dest)
                 best_stop['distance'] = dist
                 best_stop['travel_dur'] = dur
 
@@ -180,14 +181,14 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
             break
 
         arrival_time = current_time + timedelta(minutes=best_stop['travel_dur'])
-        
+
         if arrival_time.hour >= 17 or arrival_time.hour < 9:
             arrival_time = arrival_time.replace(hour=9, minute=0) + timedelta(days=1)
             if arrival_time.weekday() >= 5:
                 arrival_time += timedelta(days=(7 - arrival_time.weekday()))
 
         departure_time = arrival_time + timedelta(minutes=(best_stop['case_count'] * 45))
-        
+
         if departure_time.hour >= 17:
             overtime = departure_time - arrival_time.replace(hour=17, minute=0)
             departure_time = departure_time.replace(hour=9, minute=0) + timedelta(days=1) + overtime
@@ -206,7 +207,8 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
 
         current_location = best_stop
         current_time = departure_time
-        unvisited.remove(best_stop)
+        # DÜZELTİLDİ: unvisited listesinden orijinal dest nesnesi kaldırılıyor (best_stop kopya olduğundan)
+        unvisited = [d for d in unvisited if d['city'] != best_stop['city']]
         step += 1
 
     return route_plan
@@ -245,7 +247,6 @@ def index():
 
 @app.route('/rota')
 def rota_page():
-    # Sadece Aktif veya Duruşma Bekleyen dosyalar
     cases = Case.query.filter(
         or_(Case.status == 'Aktif', Case.status == 'Duruşma Bekliyor')
     ).order_by(Case.created_at.desc()).all()
@@ -272,7 +273,6 @@ def api_create_case():
             due_date=datetime.strptime(data.get('due_date'), '%Y-%m-%d') if data.get('due_date') else None
         )
 
-        # Koordinatları şehirden otomatik al (basit çözüm)
         coords = CITY_COORDS.get(data.get('city'))
         if coords:
             new_case.lat = coords['lat']
@@ -297,9 +297,19 @@ def api_delete_case(case_id):
 
 @app.route('/api/planla', methods=['POST'])
 def api_planla():
-    selected_ids = request.form.getlist('selected_cases[]') # AJAX array params often come with []
+    # DÜZELTİLDİ: Hem 'selected_cases[]' hem 'selected_cases' parametresi deneniyor
+    selected_ids = request.form.getlist('selected_cases[]')
     if not selected_ids:
         selected_ids = request.form.getlist('selected_cases')
+
+    # DÜZELTİLDİ: String ID'leri integer'a çevir, geçersiz değerleri atla
+    try:
+        selected_ids = [int(i) for i in selected_ids if str(i).strip().isdigit()]
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Geçersiz dosya ID formatı'}), 400
+
+    if not selected_ids:
+        return jsonify({'error': 'Geçerli dosya seçilmedi'}), 400
 
     start_date = request.form.get('start_date')
     start_city = request.form.get('start_city', 'Bursa')
@@ -310,7 +320,6 @@ def api_planla():
 
 @app.route('/api/download_template')
 def download_template():
-    # Create a sample DataFrame
     data = {
         'case_no': ['2024/1234', '2024/5678'],
         'client': ['Ahmet Yılmaz', 'Mehmet Demir'],
@@ -328,7 +337,6 @@ def download_template():
     }
     df = pd.DataFrame(data)
 
-    # Save to BytesIO
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Dosyalar')
@@ -393,7 +401,6 @@ def upload_excel():
         try:
             df = pd.read_excel(file)
 
-            # Column mapping checks could be added here
             required_columns = ['case_no', 'city']
             for col in required_columns:
                 if col not in df.columns:
@@ -401,13 +408,11 @@ def upload_excel():
 
             count = 0
             for _, row in df.iterrows():
-                # Check for valid case_no
                 if pd.isna(row.get('case_no')) or str(row.get('case_no')).strip() == '':
                     continue
 
                 case_no_val = str(row.get('case_no')).strip()
 
-                # Check if case_no exists to prevent duplicates
                 existing_case = Case.query.filter_by(case_no=case_no_val).first()
                 if existing_case:
                     continue
@@ -416,7 +421,7 @@ def upload_excel():
                 if pd.notna(row.get('due_date')):
                     try:
                         due_date_val = pd.to_datetime(row.get('due_date')).date()
-                    except:
+                    except Exception:
                         due_date_val = None
 
                 new_case = Case(
@@ -435,7 +440,6 @@ def upload_excel():
                     due_date=due_date_val
                 )
 
-                # Auto coordinates
                 city_name = str(row.get('city', ''))
                 coords = CITY_COORDS.get(city_name)
                 if coords:
@@ -456,7 +460,6 @@ def upload_excel():
 
 def init_db():
     with app.app_context():
-        # Wait for DB
         retries = 30
         while retries > 0:
             try:
@@ -469,6 +472,5 @@ def init_db():
                 retries -= 1
 
 if __name__ == '__main__':
-    # Initialize DB on startup
     init_db()
     app.run(host='0.0.0.0', port=5000, debug=True)
