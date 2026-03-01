@@ -19,7 +19,16 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
 db = SQLAlchemy(app)
 
 # Sürüm okuma
+import subprocess
+
 def get_version():
+    try:
+        # Try to get version from git tags
+        version = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0']).decode('utf-8').strip()
+        return version
+    except Exception:
+        pass
+
     try:
         with open('VERSION', 'r') as f:
             return f.read().strip()
