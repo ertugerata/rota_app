@@ -1,0 +1,26 @@
+name: Semantic Versioning Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - 'HISTORY.md'
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+
+      - name: Bump version and push tag
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
