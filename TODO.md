@@ -270,3 +270,134 @@ case = Case.query.get_or_404(case_id)
 # DOĞRU
 case = db.get_or_404(Case, case_id)
 ```
+
+## 🔴 YENİ — Kritik Hatalar
+
+### ❌ 27. `.env` — `SECRET_KEY` Placeholder Değeri Production'da Güvenli Değil
+**Dosya:** `.env`
+
+**Problem:** `.env` dosyasında `SECRET_KEY=b2c12a7a40fbdb011116c27124f0c40` gibi kısa ve zayıf bir değer mevcut. Bu değer git geçmişinde görünür; production'da ciddi güvenlik açığıdır. Ayrıca `.gitignore`'da `.env` var — bu doğru; ancak mevcut değerin uzunluğu yetersiz (32 karakter, önerilen 64+).
+
+**Düzeltme:** `.env` dosyasında `SECRET_KEY` değerini en az 64 karakterli, rastgele üretilmiş bir değerle değiştir:
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+```env
+SECRET_KEY=<yukarıdaki_komutun_çıktısı>
+```
+
+---
+
+## 🟠 YENİ — Önemli Hatalar
+
+### ❌ 28. `templates/dashboard.html` — Şehir Filtresi Dropdown'u Hâlâ Eksik Şehirler İçeriyor
+**Dosya:** `templates/dashboard.html`, şehir `<select>` dropdown'ı (arama barı üzerindeki filtre)
+
+**Problem:** TODO #21'de `CITY_COORDS`'a `Denizli` ve `Malatya` eklendi, ancak `dashboard.html`'deki arama barındaki şehir filtresi dropdown'u bu şehirleri içermiyor. Kullanıcı bu şehirlerdeki dosyaları filtre dropdown'undan seçemiyor.
+
+**Düzeltme:** `dashboard.html`'deki filtre `<select>` bloğuna eksik şehirleri ekle:
+```html
+<option value="Denizli" {% if request.args.get('city') == 'Denizli' %}selected{% endif %}>Denizli</option>
+<option value="Malatya" {% if request.args.get('city') == 'Malatya' %}selected{% endif %}>Malatya</option>
+<!-- Diğer CITY_COORDS şehirlerini de ekle -->
+```
+Uzun vadeli çözüm: Şehir listesini `CITY_COORDS.keys()`'ten Jinja2'ye geçirip template'de döngü ile üret.
+
+---
+
+### ❌ 29. `app.py` — `upload_excel`'de Yüklenen Dosyaların `lat/lon` Koordinatları Güncellenmeden Bırakılıyor
+**Dosya:** `app.py`, `upload_excel()` fonksiyonu, ~satır 290
+
+**Problem:** Excel ile toplu yüklenen case'lerde şehir adı `CITY_COORDS`'ta bulunsa da `lat` ve `lon` değerleri `Case` nesnesine set edilmiyor. Bu, Excel ile yüklenen tüm dosyaların rota hesabında `lat=None, lon=None` olarak kalmasına yol açar; bu dosyalar rotaya dahil edilemez.
+
+**Düzeltme:**
+```python
+city_name = str(row.get('city', ''))
+coords = CITY_COORDS.get(city_name)
+if coords:
+    new_case.lat = coords['lat']
+    new_case.lon = coords['lon']
+```
+Bu blok zaten mevcut (`city_name` tanımlanmış) ama `new_case.lat` ve `new_case.lon` ataması **`db.session.add(new_case)` öncesinde** yapılmalıdır. Kodu kontrol et — mevcut sıralama doğruysa sorun yok, ama test et.
+
+> **Güncelleme:** Kodu yeniden inceledim — bu blok zaten doğru sırada mevcut. Ancak Excel'de `lat`/`lon` sütunları varsa bunlar `CITY_COORDS` değerlerini ezmemeli; mevcut kod bunu gözetmiyor. Excel'den gelen `lat`/`lon` değerleri varsa onları kullan, yoksa `CITY_COORDS`'tan al:
+```python
+excel_lat = row.get('lat')
+excel_lon = row.get('lon')
+if pd.notna(excel_lat) and pd.notna(excel_lon):
+    new_case.lat = float(excel_lat)
+    new_case.lon = float(excel_lon)
+elif coords:
+    new_case.lat = coords['lat']
+    new_case.lon = coords['lon']
+```
+
+---
+
+## 🟡 YENİ — İyileştirme Gereken Alanlar
+
+### ❌ 30. `app.py` — `get_version()` Fonksiyonu Docker İçinde Gereksiz Yavaşlama Yapabilir
+**Dosya:** `app.py`, `get_version()` fonksiyonu
+
+**Problem:** Her sayfa yüklemesinde `subprocess.check_output(['git', 'describe', ...])` çağrısı yapılıyor. Docker container'ında `.git` dizini genellikle bulunmaz (`.dockerignore` veya `COPY . .` sınırlamaları nedeniyle), bu yüzden her request'te `subprocess` çağrısı başarısız olur → `except` bloğuna düşer → `VERSION` dosyasından okur. Gereksiz yavaşlama.
+
+**Düzeltme:** Sürümü uygulama başlangıcında bir kez cache'le:
+```python
+import functools
+
+@functools.lru_cache(maxsize=1)
+def get_version():
+    try:
+        return subprocess.check_output(
+            ['git', 'describe', '--tags', '--abbrev=0'],
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except Exception:
+        pass
+    try:
+        with open('VERSION', 'r') as f:
+            return f.read().strip()
+    except Exception:
+        return "Bilinmiyor"
+```
+
+---
+
+### ❌ 31. `templates/dashboard.html` — `openEditModal` JS Fonksiyonunda XSS Riski
+**Dosya:** `templates/dashboard.html`, `<button onclick="openEditModal(...)">` satırları
+
+**Problem:** `case.description` alanı `|escape` filtresi ile HTML-encode ediliyor, ancak bu değer `onclick="..."` attribute'u içinde JavaScript string olarak kullanılıyor. Açıklama alanında `'` (tek tırnak) veya `\` karakterleri JavaScript'i bozabilir veya XSS açığına yol açabilir. `|replace('\n', '\\n')` uygulanmış ama `'` karakteri için koruma yok.
+
+**Düzeltme:** Açıklama gibi uzun/karmaşık alanları `data-*` attribute'larına taşı, `onclick` yerine event listener kullan:
+```html
+<button class="btn btn-sm btn-outline-info edit-btn"
+    data-id="{{ case.id }}"
+    data-description="{{ case.description|default('')|e }}">
+```
+```javascript
+document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const desc = this.dataset.description;
+        document.getElementById('edit_description').value = desc;
+    });
+});
+```
+
+---
+
+### ❌ 32. `test_app.py` — `test_create_and_get_case`'de `lat/lon` Eksik, Rota Testlerini Etkiler
+**Dosya:** `test_app.py`, satır 44
+
+**Problem:** `test_create_and_get_case` testinde `Case` nesnesi `lat` ve `lon` olmadan oluşturuluyor. Bu test tek başına sorunsuz geçer, ancak rota hesabına dahil edilecek case'lerin koordinat gerektirdiği göz önüne alındığında tutarsız test data pattern'i oluşturuyor. TODO #24'e benzer fakat farklı test fonksiyonu.
+
+**Düzeltme:**
+```python
+new_case = Case(
+    case_no='2024/1',
+    client='Test Client',
+    city='Ankara',
+    lat=39.9334,
+    lon=32.8597,
+    status='Aktif'
+)
+
