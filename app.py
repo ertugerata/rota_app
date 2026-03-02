@@ -20,11 +20,13 @@ db = SQLAlchemy(app)
 
 # Sürüm okuma
 import subprocess
+import functools
 
+@functools.lru_cache(maxsize=1)
 def get_version():
     try:
         # Try to get version from git tags
-        version = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0']).decode('utf-8').strip()
+        version = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0'], stderr=subprocess.DEVNULL).decode('utf-8').strip()
         return version
     except Exception:
         pass
@@ -235,6 +237,7 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
                 arrival_time += timedelta(days=(7 - arrival_time.weekday()))
 
         # ÖNCE kaç tam iş günü ve artık dakika olduğunu hesapla
+        WORK_MINUTES = 8 * 60  # 09:00–17:00 = 480 dk
         total_minutes = best_stop['case_count'] * 45
         day_of_departure = arrival_time
 
@@ -543,7 +546,13 @@ def upload_excel():
 
                 city_name = str(row.get('city', ''))
                 coords = CITY_COORDS.get(city_name)
-                if coords:
+
+                excel_lat = row.get('lat')
+                excel_lon = row.get('lon')
+                if pd.notna(excel_lat) and pd.notna(excel_lon):
+                    new_case.lat = float(excel_lat)
+                    new_case.lon = float(excel_lon)
+                elif coords:
                     new_case.lat = coords['lat']
                     new_case.lon = coords['lon']
 

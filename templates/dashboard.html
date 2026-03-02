@@ -63,11 +63,27 @@
             <input type="text" name="search" class="form-control" id="searchInput" placeholder="Dosya ara (Enter'a bas)..." value="{{ request.args.get('search', '') }}" style="background-color: #1e293b; color: white;" onkeyup="if(event.keyCode === 13) { this.form.submit(); }">
             <select name="city" class="form-select" style="max-width: 150px; background-color: #1e293b; color: white;" onchange="this.form.submit()">
                 <option value="" {% if not request.args.get('city') %}selected{% endif %}>Tüm Şehirler</option>
+                <option value="Adana" {% if request.args.get('city') == 'Adana' %}selected{% endif %}>Adana</option>
                 <option value="Ankara" {% if request.args.get('city') == 'Ankara' %}selected{% endif %}>Ankara</option>
-                <option value="İstanbul" {% if request.args.get('city') == 'İstanbul' %}selected{% endif %}>İstanbul</option>
-                <option value="Bursa" {% if request.args.get('city') == 'Bursa' %}selected{% endif %}>Bursa</option>
-                <option value="İzmir" {% if request.args.get('city') == 'İzmir' %}selected{% endif %}>İzmir</option>
                 <option value="Antalya" {% if request.args.get('city') == 'Antalya' %}selected{% endif %}>Antalya</option>
+                <option value="Bursa" {% if request.args.get('city') == 'Bursa' %}selected{% endif %}>Bursa</option>
+                <option value="Denizli" {% if request.args.get('city') == 'Denizli' %}selected{% endif %}>Denizli</option>
+                <option value="Diyarbakır" {% if request.args.get('city') == 'Diyarbakır' %}selected{% endif %}>Diyarbakır</option>
+                <option value="Erzurum" {% if request.args.get('city') == 'Erzurum' %}selected{% endif %}>Erzurum</option>
+                <option value="Eskişehir" {% if request.args.get('city') == 'Eskişehir' %}selected{% endif %}>Eskişehir</option>
+                <option value="Gaziantep" {% if request.args.get('city') == 'Gaziantep' %}selected{% endif %}>Gaziantep</option>
+                <option value="İstanbul" {% if request.args.get('city') == 'İstanbul' %}selected{% endif %}>İstanbul</option>
+                <option value="İzmir" {% if request.args.get('city') == 'İzmir' %}selected{% endif %}>İzmir</option>
+                <option value="Kayseri" {% if request.args.get('city') == 'Kayseri' %}selected{% endif %}>Kayseri</option>
+                <option value="Kocaeli" {% if request.args.get('city') == 'Kocaeli' %}selected{% endif %}>Kocaeli</option>
+                <option value="Konya" {% if request.args.get('city') == 'Konya' %}selected{% endif %}>Konya</option>
+                <option value="Malatya" {% if request.args.get('city') == 'Malatya' %}selected{% endif %}>Malatya</option>
+                <option value="Mersin" {% if request.args.get('city') == 'Mersin' %}selected{% endif %}>Mersin</option>
+                <option value="Sakarya" {% if request.args.get('city') == 'Sakarya' %}selected{% endif %}>Sakarya</option>
+                <option value="Samsun" {% if request.args.get('city') == 'Samsun' %}selected{% endif %}>Samsun</option>
+                <option value="Şanlıurfa" {% if request.args.get('city') == 'Şanlıurfa' %}selected{% endif %}>Şanlıurfa</option>
+                <option value="Trabzon" {% if request.args.get('city') == 'Trabzon' %}selected{% endif %}>Trabzon</option>
+                <option value="Van" {% if request.args.get('city') == 'Van' %}selected{% endif %}>Van</option>
             </select>
         </form>
         <div>
@@ -126,7 +142,23 @@
                                 {% endif %}
                             </td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-info" title="Düzenle" onclick="openEditModal({{ case.id }}, '{{ case.case_no }}', '{{ case.client }}', '{{ case.opponent or '' }}', '{{ case.city }}', '{{ case.district or '' }}', '{{ case.court_office or '' }}', '{{ case.case_type }}', '{{ case.status }}', '{{ case.priority }}', '{{ case.follower_lawyer or '' }}', '{{ case.authorized_lawyer or '' }}', '{{ case.due_date.strftime('%Y-%m-%d') if case.due_date else '' }}', '{{ case.description|default('', true)|replace('\n', '\\n')|replace('\r', '')|escape }}')"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-outline-info edit-btn" title="Düzenle"
+                                    data-id="{{ case.id }}"
+                                    data-case-no="{{ case.case_no }}"
+                                    data-client="{{ case.client }}"
+                                    data-opponent="{{ case.opponent or '' }}"
+                                    data-city="{{ case.city }}"
+                                    data-district="{{ case.district or '' }}"
+                                    data-court-office="{{ case.court_office or '' }}"
+                                    data-case-type="{{ case.case_type }}"
+                                    data-status="{{ case.status }}"
+                                    data-priority="{{ case.priority }}"
+                                    data-follower-lawyer="{{ case.follower_lawyer or '' }}"
+                                    data-authorized-lawyer="{{ case.authorized_lawyer or '' }}"
+                                    data-due-date="{{ case.due_date.strftime('%Y-%m-%d') if case.due_date else '' }}"
+                                    data-description="{{ case.description|default('', true)|e }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
                                 <button class="btn btn-sm btn-outline-danger" title="Sil" onclick="deleteCase('{{ case.id }}')"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
@@ -225,6 +257,7 @@
                                 <option value="Eskişehir">Eskişehir</option>
                                 <option value="Samsun">Samsun</option>
                                 <option value="Denizli">Denizli</option>
+                                <option value="Malatya">Malatya</option>
                                 <option value="Sakarya">Sakarya</option>
                                 <option value="Trabzon">Trabzon</option>
                                 <option value="Erzurum">Erzurum</option>
@@ -335,6 +368,8 @@
                                 <option value="Diyarbakır">Diyarbakır</option>
                                 <option value="Samsun">Samsun</option>
                                 <option value="Kayseri">Kayseri</option>
+                                <option value="Denizli">Denizli</option>
+                                <option value="Malatya">Malatya</option>
                                 <option value="Sakarya">Sakarya</option>
                                 <option value="Şanlıurfa">Şanlıurfa</option>
                                 <option value="Trabzon">Trabzon</option>
@@ -390,25 +425,42 @@
 
 {% block scripts %}
 <script>
-    function openEditModal(id, case_no, client, opponent, city, district, court_office, case_type, status, priority, follower_lawyer, authorized_lawyer, due_date, description) {
-        document.getElementById('editCaseForm').action = '/api/cases/update/' + id;
-        document.getElementById('edit_case_no').value = case_no;
-        document.getElementById('edit_client').value = client;
-        document.getElementById('edit_opponent').value = opponent !== 'None' ? opponent : '';
-        document.getElementById('edit_city').value = city;
-        document.getElementById('edit_district').value = district !== 'None' ? district : '';
-        document.getElementById('edit_court_office').value = court_office !== 'None' ? court_office : '';
-        document.getElementById('edit_case_type').value = case_type;
-        document.getElementById('edit_status').value = status;
-        document.getElementById('edit_priority').value = priority;
-        document.getElementById('edit_follower_lawyer').value = follower_lawyer !== 'None' ? follower_lawyer : '';
-        document.getElementById('edit_authorized_lawyer').value = authorized_lawyer !== 'None' ? authorized_lawyer : '';
-        document.getElementById('edit_due_date').value = due_date !== 'None' ? due_date : '';
-        document.getElementById('edit_description').value = description !== 'None' ? description : '';
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            var id = this.dataset.id;
+            var case_no = this.dataset.caseNo;
+            var client = this.dataset.client;
+            var opponent = this.dataset.opponent;
+            var city = this.dataset.city;
+            var district = this.dataset.district;
+            var court_office = this.dataset.courtOffice;
+            var case_type = this.dataset.caseType;
+            var status = this.dataset.status;
+            var priority = this.dataset.priority;
+            var follower_lawyer = this.dataset.followerLawyer;
+            var authorized_lawyer = this.dataset.authorizedLawyer;
+            var due_date = this.dataset.dueDate;
+            var description = this.dataset.description;
 
-        var editModal = new bootstrap.Modal(document.getElementById('editCaseModal'));
-        editModal.show();
-    }
+            document.getElementById('editCaseForm').action = '/api/cases/update/' + id;
+            document.getElementById('edit_case_no').value = case_no;
+            document.getElementById('edit_client').value = client;
+            document.getElementById('edit_opponent').value = opponent !== 'None' ? opponent : '';
+            document.getElementById('edit_city').value = city;
+            document.getElementById('edit_district').value = district !== 'None' ? district : '';
+            document.getElementById('edit_court_office').value = court_office !== 'None' ? court_office : '';
+            document.getElementById('edit_case_type').value = case_type;
+            document.getElementById('edit_status').value = status;
+            document.getElementById('edit_priority').value = priority;
+            document.getElementById('edit_follower_lawyer').value = follower_lawyer !== 'None' ? follower_lawyer : '';
+            document.getElementById('edit_authorized_lawyer').value = authorized_lawyer !== 'None' ? authorized_lawyer : '';
+            document.getElementById('edit_due_date').value = due_date !== 'None' ? due_date : '';
+            document.getElementById('edit_description').value = description !== 'None' ? description : '';
+
+            var editModal = new bootstrap.Modal(document.getElementById('editCaseModal'));
+            editModal.show();
+        });
+    });
 
     function deleteCase(id) {
         if(confirm('Bu dosyayı silmek istediğinize emin misiniz?')) {
