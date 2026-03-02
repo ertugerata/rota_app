@@ -1,3 +1,6 @@
+- Merge pull request #14 from ertugerata/fix-todo-bugs-14962584748765579442 (a296e2b)
+- Hi! I'm Jules, and I've updated the codebase to resolve the issues reported in Todo.md: (6fefb72)
+- chore: update CHANGELOG.md and VERSION to v0.2.0 [skip ci] (9c133e5)
 - Merge pull request #13 from ertugerata/feat/dynamic-version-changelog-6887439719195064631 (0b00415)
 - feat: implement dynamic version from git and auto-update changelog (79d9976)
 -  kod düzeltmelerini ekle. (7077ead)
