@@ -56,7 +56,7 @@ class TestApp(unittest.TestCase):
         mock_get_osrm_route.return_value = (100, 60)
 
         c1 = Case(case_no='C1', client='Client 1', city='Ankara', lat=39.9, lon=32.8)
-        c2 = Case(case_no='C2', client='Client 2', city='Istanbul', lat=41.0, lon=28.9)
+        c2 = Case(case_no='C2', client='Client 2', city='İstanbul', lat=41.0, lon=28.9)
         db.session.add_all([c1, c2])
         db.session.commit()
 

@@ -60,7 +60,7 @@
     <!-- Actions Bar -->
     <div class="d-flex justify-content-between mb-3 align-items-center">
         <form class="d-flex gap-2 w-50" method="GET" action="/">
-            <input type="text" name="search" class="form-control" id="searchInput" placeholder="Dosya ara (Enter'a bas)..." value="{{ request.args.get('search', '') }}" style="background-color: #1e293b; color: white;">
+            <input type="text" name="search" class="form-control" id="searchInput" placeholder="Dosya ara (Enter'a bas)..." value="{{ request.args.get('search', '') }}" style="background-color: #1e293b; color: white;" onkeyup="if(event.keyCode === 13) { this.form.submit(); }">
             <select name="city" class="form-select" style="max-width: 150px; background-color: #1e293b; color: white;" onchange="this.form.submit()">
                 <option value="" {% if not request.args.get('city') %}selected{% endif %}>Tüm Şehirler</option>
                 <option value="Ankara" {% if request.args.get('city') == 'Ankara' %}selected{% endif %}>Ankara</option>
