@@ -8,3 +8,5 @@ DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
 # Lütfen Supabase projenizin ayarlarından (Project Settings -> Database) "Connection string" kısmındaki bilgileri alıp buraya yapıştırın.
 # Parola kısmını ([YOUR-PASSWORD]) güncellemeyi unutmayın.
 # DATABASE_URL=postgresql://postgres.xxx:YOUR_PASSWORD@aws-0-eu-central-1.pooler.supabase.com:6543/postgres
+
+SECRET_KEY=buraya-gizli-ve-uzun-rastgele-bir-deger-girin

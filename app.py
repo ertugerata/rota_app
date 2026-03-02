@@ -113,6 +113,8 @@ CITY_COORDS = {
     'Şanlıurfa': {'lat': 37.1591, 'lon': 38.7969},
     'Trabzon': {'lat': 41.0027, 'lon': 39.7168},
     'Van': {'lat': 38.4891, 'lon': 43.4089},
+    'Denizli': {'lat': 37.7765, 'lon': 29.0864},
+    'Malatya': {'lat': 38.3552, 'lon': 38.3095},
 }
 
 # --- Rota Optimizasyon Algoritması ---
@@ -232,14 +234,24 @@ def calculate_route(selected_case_ids, start_city="Bursa", start_date_str=None):
             if arrival_time.weekday() >= 5:
                 arrival_time += timedelta(days=(7 - arrival_time.weekday()))
 
-        departure_time = arrival_time + timedelta(minutes=(best_stop['case_count'] * 45))
+        # ÖNCE kaç tam iş günü ve artık dakika olduğunu hesapla
+        total_minutes = best_stop['case_count'] * 45
+        day_of_departure = arrival_time
 
-        if departure_time.hour >= 17:
-            # İşlemler mesai sonrasına taşıyorsa
-            overtime = departure_time - departure_time.replace(hour=17, minute=0, second=0, microsecond=0)
-            departure_time = departure_time.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1) + overtime
-            if departure_time.weekday() >= 5:
-                departure_time += timedelta(days=(7 - departure_time.weekday()))
+        remaining = total_minutes
+        while remaining > 0:
+            end_of_day = day_of_departure.replace(hour=17, minute=0, second=0, microsecond=0)
+            available = (end_of_day - day_of_departure).total_seconds() / 60
+            if remaining <= available:
+                day_of_departure = day_of_departure + timedelta(minutes=remaining)
+                remaining = 0
+            else:
+                remaining -= available
+                day_of_departure = day_of_departure.replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1)
+                if day_of_departure.weekday() >= 5:
+                    day_of_departure += timedelta(days=(7 - day_of_departure.weekday()))
+
+        departure_time = day_of_departure
 
         route_plan.append({
             'step': step,
@@ -290,6 +302,7 @@ def index():
 
     return render_template('dashboard.html',
                            cases=cases,
+                           active_page='dashboard',
                            stats={
                                'total': total_files,
                                'cities': cities_count,
@@ -299,11 +312,13 @@ def index():
 
 @app.route('/rota')
 def rota_page():
+    from datetime import date
     cases = Case.query.filter(
         or_(Case.status == 'Aktif', Case.status == 'Duruşma Bekliyor')
     ).order_by(Case.created_at.desc()).all()
 
-    return render_template('route.html', cases=cases)
+    current_week = date.today().strftime('%G-W%V')
+    return render_template('route.html', cases=cases, active_page='rota', current_week=current_week)
 
 @app.route('/api/cases', methods=['POST'])
 def api_create_case():
@@ -340,7 +355,7 @@ def api_create_case():
 @app.route('/api/cases/update/<int:case_id>', methods=['POST'])
 def api_update_case(case_id):
     try:
-        case = Case.query.get_or_404(case_id)
+        case = db.get_or_404(Case, case_id)
         data = request.form.to_dict()
 
         case.case_no = data.get('case_no', case.case_no)
@@ -373,7 +388,7 @@ def api_update_case(case_id):
 @app.route('/api/cases/delete/<int:case_id>', methods=['POST'])
 def api_delete_case(case_id):
     try:
-        case = Case.query.get_or_404(case_id)
+        case = db.get_or_404(Case, case_id)
         db.session.delete(case)
         db.session.commit()
     except Exception as e:
