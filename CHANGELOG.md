@@ -1,3 +1,6 @@
+- Merge pull request #15 from ertugerata/fix-remaining-todo-errors-13770589533750085261 (e0dcbd6)
+- fix: Resolve remaining bugs and technical debt from TODO.md (8833f64)
+- chore: update CHANGELOG.md and VERSION to v0.2.2 [skip ci] (4ace5e3)
 - add new todos. (d33397b)
 - chore: update CHANGELOG.md and VERSION to v0.2.1 [skip ci] (3420ec0)
 - Merge pull request #14 from ertugerata/fix-todo-bugs-14962584748765579442 (a296e2b)
