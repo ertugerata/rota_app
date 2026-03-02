@@ -1,3 +1,5 @@
+- use dotenv, add dockerignore (7e3129e)
+- chore: update CHANGELOG.md and VERSION to v0.2.3 [skip ci] (3dcc60f)
 - Merge pull request #15 from ertugerata/fix-remaining-todo-errors-13770589533750085261 (e0dcbd6)
 - fix: Resolve remaining bugs and technical debt from TODO.md (8833f64)
 - chore: update CHANGELOG.md and VERSION to v0.2.2 [skip ci] (4ace5e3)
