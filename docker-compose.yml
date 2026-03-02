@@ -26,6 +26,8 @@ services:
       - "5000:5000"
     env_file:
       - .env
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-dev-secret}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

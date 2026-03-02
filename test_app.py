@@ -41,6 +41,8 @@ class TestApp(unittest.TestCase):
             case_no='2024/1',
             client='Test Client',
             city='Ankara',
+            lat=39.9334,
+            lon=32.8597,
             status='Aktif'
         )
         db.session.add(new_case)

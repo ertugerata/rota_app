@@ -124,7 +124,7 @@ $.ajax({
 
 ## 🔴 YENİ — Kritik Hatalar (Kod İncelemesinde Tespit Edildi)
 
-### ❌ 19. `app.py` — `departure_time` Overtime Hesabı Hatalı (Çok Fazla Dosya Durumu)
+### ✅ 19. `app.py` — `departure_time` Overtime Hesabı Hatalı (Çok Fazla Dosya Durumu)
 **Dosya:** `app.py`, `calculate_route()` fonksiyonu, ~satır 148–156
 
 **Problem:** `departure_time = arrival_time + timedelta(minutes=(best_stop['case_count'] * 45))` hesabında, bir şehirde çok sayıda dosya varsa (örn. 20 dosya → 900 dk = 15 saat), `departure_time` **ertesi güne veya daha ileriye taşabilir**. Bu durumda `overtime` hesabı şöyle yapılıyor:
@@ -160,7 +160,7 @@ departure_time = day_of_departure
 
 ---
 
-### ❌ 20. `app.py` — `render_template` Çağrılarında `active_page` Parametresi Eksik
+### ✅ 20. `app.py` — `render_template` Çağrılarında `active_page` Parametresi Eksik
 **Dosya:** `app.py`, `index()` ve `rota_page()` fonksiyonları
 
 **Problem:** `base.html` şablonu sidebar menüsünde aktif sayfayı belirtmek için `active_page` değişkenini kullanıyor:
@@ -183,7 +183,7 @@ return render_template('route.html', cases=cases, active_page='rota')
 
 ## 🟠 YENİ — Önemli Hatalar
 
-### ❌ 21. `templates/dashboard.html` — Şehir Filtresi Dropdown'u Eksik Şehirler İçeriyor
+### ✅ 21. `templates/dashboard.html` — Şehir Filtresi Dropdown'u Eksik Şehirler İçeriyor
 **Dosya:** `templates/dashboard.html`, şehir `<select>` dropdown'ı
 
 **Problem:** Dropdown'da `Denizli` seçeneği var, ancak `CITY_COORDS` sözlüğünde ve `app.py`'nin `index()` filtresinde Denizli koordinatı **tanımlı değil**. Kullanıcı Denizli'yi şehir olarak seçip kaydedebilir, ancak bu dosya rota hesabına dahil edilemez (koordinat bulunamaz, atlanır). Aynı durum `addCaseModal`'daki şehir listesi için de geçerli.
@@ -198,7 +198,7 @@ Ya da her iki şehir listesini tek bir yerden (CITY_COORDS anahtarlarından) tü
 
 ---
 
-### ❌ 22. `templates/route.html` — `weekPicker` Değeri Hardcoded
+### ✅ 22. `templates/route.html` — `weekPicker` Değeri Hardcoded
 **Dosya:** `templates/route.html`, satır: `<input type="week" id="weekPicker" class="form-control" value="2026-W09">`
 
 **Problem:** Başlangıç haftası sabit `2026-W09` olarak kodlanmış. Kullanıcı her seferinde bunu manuel değiştirmek zorunda; uygulama ilk açıldığında geçmiş bir tarihi gösterecek.
@@ -217,7 +217,7 @@ return render_template('route.html', cases=cases, active_page='rota', current_we
 
 ---
 
-### ❌ 23. `templates/route.html` — `bg-gold` CSS Sınıfı Tanımlı Değil
+### ✅ 23. `templates/route.html` — `bg-gold` CSS Sınıfı Tanımlı Değil
 **Dosya:** `templates/route.html`, satır: `<span class="badge bg-gold text-dark me-2">`
 
 **Problem:** `bg-gold` Bootstrap'te veya `base.html`'deki custom CSS'te tanımlanmamış bir sınıf. Badge arka planı renksiz (şeffaf) görünür.
@@ -233,7 +233,7 @@ return render_template('route.html', cases=cases, active_page='rota', current_we
 
 ## 🟡 YENİ — İyileştirme Gereken Alanlar
 
-### ❌ 24. `test_app.py` — `city='Istanbul'` (ASCII) Yazım Hatası
+### ✅ 24. `test_app.py` — `city='Istanbul'` (ASCII) Yazım Hatası
 **Dosya:** `test_app.py`, satır: `city='Istanbul'`
 
 **Problem:** Test verisinde şehir adı `'Istanbul'` olarak girilmiş; ancak uygulamada tüm şehir adları Türkçe karakter içeriyor (`'İstanbul'`). Bu, CITY_COORDS aramasının başarısız olmasına ve test case'inin koordinatsız kalmasına neden olur; ancak test `lat/lon` elle verildiği için rota hesabında sorun çıkmaz. Yine de tutarsızlık gerçek senaryolarda bulunamayan şehirlere yol açabilir.
@@ -245,7 +245,7 @@ c2 = Case(case_no='C2', client='Client 2', city='İstanbul', lat=41.0, lon=28.9)
 
 ---
 
-### ❌ 25. `docker-compose.yml` — `web` Servisi İçin `SECRET_KEY` Ortam Değişkeni `.env`'de Yok
+### ✅ 25. `docker-compose.yml` — `web` Servisi İçin `SECRET_KEY` Ortam Değişkeni `.env`'de Yok
 **Dosya:** `.env` ve `env-sample.txt`
 
 **Problem:** `app.py`'de `SECRET_KEY` okunuyor (`os.environ.get('SECRET_KEY', 'dev-secret')`), ancak `.env` ve `env-sample.txt` dosyalarında bu değişken **tanımlı değil**. Production'da varsayılan `'dev-secret'` değeri kullanılacak; bu ciddi bir güvenlik açığı.
@@ -257,7 +257,7 @@ SECRET_KEY=buraya-gizli-ve-uzun-rastgele-bir-deger-girin
 
 ---
 
-### ❌ 26. `app.py` — `Case.query.get_or_404()` SQLAlchemy 2.x'te Deprecated
+### ✅ 26. `app.py` — `Case.query.get_or_404()` SQLAlchemy 2.x'te Deprecated
 **Dosya:** `app.py`, `api_update_case()` ve `api_delete_case()` fonksiyonları
 
 **Problem:** `Case.query.get_or_404(case_id)` Flask-SQLAlchemy 3.x / SQLAlchemy 2.x'te deprecated; `db.get_or_404(Case, case_id)` olarak güncellenmeli.
@@ -273,7 +273,7 @@ case = db.get_or_404(Case, case_id)
 
 ## 🔴 YENİ — Kritik Hatalar
 
-### ❌ 27. `.env` — `SECRET_KEY` Placeholder Değeri Production'da Güvenli Değil
+### ✅ 27. `.env` — `SECRET_KEY` Placeholder Değeri Production'da Güvenli Değil
 **Dosya:** `.env`
 
 **Problem:** `.env` dosyasında `SECRET_KEY=b2c12a7a40fbdb011116c27124f0c40` gibi kısa ve zayıf bir değer mevcut. Bu değer git geçmişinde görünür; production'da ciddi güvenlik açığıdır. Ayrıca `.gitignore`'da `.env` var — bu doğru; ancak mevcut değerin uzunluğu yetersiz (32 karakter, önerilen 64+).
@@ -290,7 +290,7 @@ SECRET_KEY=<yukarıdaki_komutun_çıktısı>
 
 ## 🟠 YENİ — Önemli Hatalar
 
-### ❌ 28. `templates/dashboard.html` — Şehir Filtresi Dropdown'u Hâlâ Eksik Şehirler İçeriyor
+### ✅ 28. `templates/dashboard.html` — Şehir Filtresi Dropdown'u Hâlâ Eksik Şehirler İçeriyor
 **Dosya:** `templates/dashboard.html`, şehir `<select>` dropdown'ı (arama barı üzerindeki filtre)
 
 **Problem:** TODO #21'de `CITY_COORDS`'a `Denizli` ve `Malatya` eklendi, ancak `dashboard.html`'deki arama barındaki şehir filtresi dropdown'u bu şehirleri içermiyor. Kullanıcı bu şehirlerdeki dosyaları filtre dropdown'undan seçemiyor.
@@ -305,7 +305,7 @@ Uzun vadeli çözüm: Şehir listesini `CITY_COORDS.keys()`'ten Jinja2'ye geçir
 
 ---
 
-### ❌ 29. `app.py` — `upload_excel`'de Yüklenen Dosyaların `lat/lon` Koordinatları Güncellenmeden Bırakılıyor
+### ✅ 29. `app.py` — `upload_excel`'de Yüklenen Dosyaların `lat/lon` Koordinatları Güncellenmeden Bırakılıyor
 **Dosya:** `app.py`, `upload_excel()` fonksiyonu, ~satır 290
 
 **Problem:** Excel ile toplu yüklenen case'lerde şehir adı `CITY_COORDS`'ta bulunsa da `lat` ve `lon` değerleri `Case` nesnesine set edilmiyor. Bu, Excel ile yüklenen tüm dosyaların rota hesabında `lat=None, lon=None` olarak kalmasına yol açar; bu dosyalar rotaya dahil edilemez.
@@ -336,7 +336,7 @@ elif coords:
 
 ## 🟡 YENİ — İyileştirme Gereken Alanlar
 
-### ❌ 30. `app.py` — `get_version()` Fonksiyonu Docker İçinde Gereksiz Yavaşlama Yapabilir
+### ✅ 30. `app.py` — `get_version()` Fonksiyonu Docker İçinde Gereksiz Yavaşlama Yapabilir
 **Dosya:** `app.py`, `get_version()` fonksiyonu
 
 **Problem:** Her sayfa yüklemesinde `subprocess.check_output(['git', 'describe', ...])` çağrısı yapılıyor. Docker container'ında `.git` dizini genellikle bulunmaz (`.dockerignore` veya `COPY . .` sınırlamaları nedeniyle), bu yüzden her request'te `subprocess` çağrısı başarısız olur → `except` bloğuna düşer → `VERSION` dosyasından okur. Gereksiz yavaşlama.
@@ -363,7 +363,7 @@ def get_version():
 
 ---
 
-### ❌ 31. `templates/dashboard.html` — `openEditModal` JS Fonksiyonunda XSS Riski
+### ✅ 31. `templates/dashboard.html` — `openEditModal` JS Fonksiyonunda XSS Riski
 **Dosya:** `templates/dashboard.html`, `<button onclick="openEditModal(...)">` satırları
 
 **Problem:** `case.description` alanı `|escape` filtresi ile HTML-encode ediliyor, ancak bu değer `onclick="..."` attribute'u içinde JavaScript string olarak kullanılıyor. Açıklama alanında `'` (tek tırnak) veya `\` karakterleri JavaScript'i bozabilir veya XSS açığına yol açabilir. `|replace('\n', '\\n')` uygulanmış ama `'` karakteri için koruma yok.
@@ -385,7 +385,7 @@ document.querySelectorAll('.edit-btn').forEach(btn => {
 
 ---
 
-### ❌ 32. `test_app.py` — `test_create_and_get_case`'de `lat/lon` Eksik, Rota Testlerini Etkiler
+### ✅ 32. `test_app.py` — `test_create_and_get_case`'de `lat/lon` Eksik, Rota Testlerini Etkiler
 **Dosya:** `test_app.py`, satır 44
 
 **Problem:** `test_create_and_get_case` testinde `Case` nesnesi `lat` ve `lon` olmadan oluşturuluyor. Bu test tek başına sorunsuz geçer, ancak rota hesabına dahil edilecek case'lerin koordinat gerektirdiği göz önüne alındığında tutarsız test data pattern'i oluşturuyor. TODO #24'e benzer fakat farklı test fonksiyonu.
