@@ -1,3 +1,5 @@
+- add new todos. (d33397b)
+- chore: update CHANGELOG.md and VERSION to v0.2.1 [skip ci] (3420ec0)
 - Merge pull request #14 from ertugerata/fix-todo-bugs-14962584748765579442 (a296e2b)
 - Hi! I'm Jules, and I've updated the codebase to resolve the issues reported in Todo.md: (6fefb72)
 - chore: update CHANGELOG.md and VERSION to v0.2.0 [skip ci] (9c133e5)
