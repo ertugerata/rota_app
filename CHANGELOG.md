@@ -1,3 +1,6 @@
+- Merge pull request #16 from ertugerata/fix-todos-35-36-8426784519125355967 (06c61fd)
+- fix: complete open bugs and remove artifacts (7e2bd5b)
+- chore: update CHANGELOG.md and VERSION to v0.2.5 [skip ci] (7c582b2)
 - new problems. (62244f9)
 - chore: update CHANGELOG.md and VERSION to v0.2.4 [skip ci] (6b38029)
 - use dotenv, add dockerignore (7e3129e)
