@@ -2,7 +2,7 @@
 
 ## 🟠 Önemli Hatalar
 
-### ❌ 35. `run_tests.py` — pandas/openpyxl Mock'u `test_upload_excel`'i Kırıyor
+### ✅ 35. `run_tests.py` — pandas/openpyxl Mock'u `test_upload_excel`'i Kırıyor
 **Dosya:** `run_tests.py`
 
 **Problem:** `pandas` ve `openpyxl` `MagicMock` ile eziliyor, ancak
@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
 ## 🟡 İyileştirme Gereken Alanlar
 
-### ❌ 36. `.env` — Çalıştırma Senaryoları Yetersiz Belgelenmiş
+### ✅ 36. `.env` — Çalıştırma Senaryoları Yetersiz Belgelenmiş
 **Dosya:** `.env`, `env-sample.txt`
 
 **Problem:** Sadece Docker Compose senaryosu aktif. Docker dışında

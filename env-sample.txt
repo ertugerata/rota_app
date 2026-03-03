@@ -1,12 +1,12 @@
 # Supabase PostgreSQL Bağlantı Adresi
 #
-# 1) YERELDE (Local) Supabase kullanmak için (Varsayılan):
-# Docker Compose ile başlatılan yerel PostgreSQL veritabanına bağlanır.
+# 1) DOCKER COMPOSE içinde (aktif):
 DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
 
-# 2) BULUTTA (Cloud) Supabase kullanmak isterseniz üsttekini yorum satırı yapıp alttakini aktifleştirin:
-# Lütfen Supabase projenizin ayarlarından (Project Settings -> Database) "Connection string" kısmındaki bilgileri alıp buraya yapıştırın.
-# Parola kısmını ([YOUR-PASSWORD]) güncellemeyi unutmayın.
+# 2) Docker dışında, yerel Docker DB'ye bağlanmak için:
+# DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres
+
+# 3) Supabase cloud için:
 # DATABASE_URL=postgresql://postgres.xxx:YOUR_PASSWORD@aws-0-eu-central-1.pooler.supabase.com:6543/postgres
 
 SECRET_KEY=buraya-gizli-ve-uzun-rastgele-bir-deger-girin
