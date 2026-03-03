@@ -1,3 +1,5 @@
+- new problems. (62244f9)
+- chore: update CHANGELOG.md and VERSION to v0.2.4 [skip ci] (6b38029)
 - use dotenv, add dockerignore (7e3129e)
 - chore: update CHANGELOG.md and VERSION to v0.2.3 [skip ci] (3dcc60f)
 - Merge pull request #15 from ertugerata/fix-remaining-todo-errors-13770589533750085261 (e0dcbd6)
